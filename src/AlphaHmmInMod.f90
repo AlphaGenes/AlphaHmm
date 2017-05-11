@@ -29,6 +29,7 @@ module AlphaHmmInMod
 
     ! character(len=300) :: PedigreeFile = "Pedigree.txt"     ! Pedigree File
     character(len=300) :: GenotypeFile = "Genotypes.txt"    ! Genotype File
+    integer :: genotypeFileUnit                             ! Unit of genotype file
 
     integer(kind=1) :: HMMOption                            ! Tipe of HMM imputation (Genotype vs Sequence)
 
@@ -62,9 +63,9 @@ contains
         use AlphaHouseMod, only: parseToFirstWhitespace,splitLineIntoTwoParts,toLower
         use hmmPARAMETERS
 
-        integer :: unit,IOStatus,i
+        integer :: unit,IOStatus
         character(len=*), intent(in) :: SpecFile
-        class(AlphaImputeInput), optional, intent(inout),target :: this
+        class(AlphaHmmInput), optional, intent(inout),target :: this
 
         character(len=300) :: first, line
         character(len=:), allocatable::tag
@@ -123,13 +124,18 @@ contains
 
                 case("burninrounds")
                     read(second(1), *) this%HmmBurnInRound
+
                 case("rounds")
                     read(second(1), *)this%nRoundsHMM
+
                 case("parallelprocessors")
                     read(second(1), *) this%useProcs
+
                 end select
             end if
         end do READFILE
+
+        open (newUnit=this%genotypeFileUnit,file=trim(this%GenotypeFile),status="old")
 
     end subroutine ReadInParameterFile
 
