@@ -8,10 +8,19 @@ module hmmPARAMETERS
     integer, parameter :: RUN_HMM_PREPHASE=4
     integer, parameter :: RUN_HMM_NGS=5
 
+    integer, parameter :: MAX_READS_COUNT=100 ! Maximum number of reads for reference and alternative alleles
+
 end module hmmPARAMETERS
 
 module GlobalVariablesHmmMaCH
     implicit none
+
+    type HmmReads
+        integer,allocatable,dimension (:,:) :: ReferAllele
+        integer,allocatable,dimension (:,:) :: AlterAllele
+    end type HmmReads
+
+    type(HmmReads) :: Reads
 
     integer, parameter :: GENOTYPE_MISSING=9
     integer, parameter :: ALLELE_MISSING=3

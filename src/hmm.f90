@@ -1724,7 +1724,7 @@ CONTAINS
             alleles = 0
 
             do i=1,nGenotyped
-                readObs = readObs + reads(i,j)
+                readObs = readObs + ReferAllele(i,j) + AlterAllele(i,j)
                 alleles = alleles + AlterAllele(i,j)
             enddo
             frequency =  dble(alleles) / dble(readObs)

@@ -19,6 +19,8 @@
 ! 2017.05.10  RAntolin - Initial Version
 !
 !-----------------------------------------------------------------------------------------------------------------------
+#define STRINGIFY(x)#x
+#define TOSTRING(x) STRINGIFY(x)
 
 module hmmHeader
 
