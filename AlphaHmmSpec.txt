@@ -1,0 +1,7 @@
+GenotypeFile                            ,data/Sequence.txt
+NumberSnp                               ,200
+HMMOption                               ,NGS
+TemplateHaplotypes                      ,200
+BurnInRounds                            ,5
+Rounds                                  ,20
+ParallelProcessors                      ,8
