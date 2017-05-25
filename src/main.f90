@@ -22,11 +22,10 @@
 !
 !-----------------------------------------------------------------------------------------------------------------------
 Program AlphaHMM
-    ! use hmmModule
-    use GlobalVariablesHmmMaCH
+    use hmmModule
     use AlphaHmmInMod
-    use hmmInputMod
     use hmmHeader
+    use GlobalVariablesHmmMaCH
     implicit none
 
     ! type(AlphaHmmInput), pointer :: inputParams
@@ -52,7 +51,7 @@ Program AlphaHMM
 
     call Titles
 
-    nIndHmmMaCH = CountInData()
+    ! nIndHmmMaCH = CountInData()
     call ReadInData(nIndHmmMaCH)
 
     ! call HMMControler(Parameters)

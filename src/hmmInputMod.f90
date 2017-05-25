@@ -139,7 +139,7 @@ contains
             !     call ReadPlink(inputParams%genotypeFileUnit)
             ! end if
         else
-            call ReadSeq(inputParams%genotypeFileUnit, nGenotyped)
+            call ped%addSequenceFromFile(inputparams%GenotypeFile, inputParams%nsnpRaw)
         endif
 
         close(inputParams%genotypeFileUnit)
@@ -232,12 +232,6 @@ contains
 
         inputParams => defaultInput
 
-        ! Initialise reads to zero
-        allocate(Reads%ReferAllele(nAnisS,inputParams%nSnp))
-        allocate(Reads%AlterAllele(nAnisS,inputParams%nSnp))
-        Reads%ReferAllele=0
-        Reads%AlterAllele=0
-
         inquire(unit=ReadsFileUnit, opened=opened, named=named, name=ReadsFile)
         if (.NOT. opened .and. named) then
             open(unit=ReadsFileUnit, file=ReadsFile, status='unknown')
@@ -246,17 +240,17 @@ contains
             open(newunit=ReadsFileUnit, file=inputParams%GenotypeFile)
         end if
 
-        do i=1,nAnisS
-            read (ReadsFileUnit,*) dumID, Reads%ReferAllele(i,:)
-            read (ReadsFileUnit,*) dumID, Reads%AlterAllele(i,:)
-        end do
+        ! do i=1,nAnisS
+        !     read (ReadsFileUnit,*) dumID, Reads%ReferAllele(i,:)
+        !     read (ReadsFileUnit,*) dumID, Reads%AlterAllele(i,:)
+        ! end do
 
-        do i=1,nAnisS
-            do j=1,inputParams%nsnp
-                if (Reads%ReferAllele(i,j)>=MAX_READS_COUNT) Reads%ReferAllele(i,j)=MAX_READS_COUNT-1
-                if (Reads%AlterAllele(i,j)>=MAX_READS_COUNT) Reads%AlterAllele(i,j)=MAX_READS_COUNT-1
-            enddo
-        enddo
+        ! do i=1,nAnisS
+        !     do j=1,inputParams%nsnp
+        !         if (Reads%ReferAllele(i,j)>=MAX_READS_COUNT) Reads%ReferAllele(i,j)=MAX_READS_COUNT-1
+        !         if (Reads%AlterAllele(i,j)>=MAX_READS_COUNT) Reads%AlterAllele(i,j)=MAX_READS_COUNT-1
+        !     enddo
+        ! enddo
 
         close(ReadsFileUnit)
 

@@ -7,20 +7,16 @@ module hmmPARAMETERS
     integer, parameter :: RUN_HMM_ONLY=3
     integer, parameter :: RUN_HMM_PREPHASE=4
     integer, parameter :: RUN_HMM_NGS=5
-
     integer, parameter :: MAX_READS_COUNT=100 ! Maximum number of reads for reference and alternative alleles
+
 
 end module hmmPARAMETERS
 
 module GlobalVariablesHmmMaCH
+    use PedigreeModule
     implicit none
 
-    type HmmReads
-        integer,allocatable,dimension (:,:) :: ReferAllele
-        integer,allocatable,dimension (:,:) :: AlterAllele
-    end type HmmReads
 
-    type(HmmReads) :: Reads
 
     integer, parameter :: GENOTYPE_MISSING=9
     integer, parameter :: ALLELE_MISSING=3
@@ -34,8 +30,8 @@ module GlobalVariablesHmmMaCH
 
     character(len=300) :: GenotypeFileName,CheckPhaseFileName,CheckGenoFileName
     character*(20), allocatable, dimension(:) :: AnimalsInbred,GlobalHmmMachID
-    integer :: nIndHmmMaCH,GlobalRoundHmm,nSnpHmm,nGametesPhased,nAnimPhased,nAnisInbred
-    integer :: nHapInSubH,useProcs,nRoundsHmm,HmmBurnInRound,idum,windowLength
+    integer :: nIndHmmMaCH,GlobalRoundHmm,nGametesPhased,nAnimPhased,nAnisInbred
+    integer :: nHapInSubH,useProcs,nRoundsHmm,HmmBurnInRound,windowLength
     real    :: phasedThreshold,imputedThreshold
     logical :: segmentOverlap
     integer,allocatable,dimension(:,:) :: GenosHmmMaCH,SubH
@@ -50,6 +46,10 @@ module GlobalVariablesHmmMaCH
     real,allocatable,dimension (:,:) :: ProbImputeGenosHmm
     real,allocatable,dimension (:,:,:) :: ProbImputePhaseHmm
     integer, allocatable :: GenosCounts(:,:,:)
+    integer(kind=1),pointer,dimension (:,:,:) :: ImputePhaseHMM
+integer(kind=1), pointer, dimension(:,:) :: imputeGenosHMM
+    type(pedigreeHolder), pointer :: pedigree
+
 
     !$omp threadprivate(ForwardProbs, SubH)
 

@@ -5,16 +5,20 @@ MODULE hmmHaplotyper
     CONTAINS
 
     subroutine ForwardAlgorithmForHaplotype(CurrentInd, hap)
-        use Global
         use GlobalVariablesHmmMaCH
+
         use Par_Zig_mod
         use omp_lib
+        use AlphaHmmInMod
 
-        implicit none
         integer, intent(in) :: CurrentInd, hap
 
         ! Local variables
         integer :: marker
+        type(AlphaHmmInput), pointer :: inputParams
+
+        inputParams => defaultInput
+
 
 #if DEBUG.EQ.1
         write(0,*) 'DEBUG: [ForwardAlgorithmForHaplotype]'
@@ -24,7 +28,7 @@ MODULE hmmHaplotyper
         call SetUpPriorHaplotype
         call ConditionHaplotypeOnData(CurrentInd, marker, hap)
 
-        do marker=2,nSnpHmm
+        do marker=2,inputParams%nsnp
             call TransposeHaplotype(marker-1, marker, Thetas(marker-1))
             call ConditionHaplotypeOnData(CurrentInd, marker, hap)
         enddo
@@ -33,12 +37,11 @@ MODULE hmmHaplotyper
 
     !######################################################################
     subroutine ForwardAlgorithmForSegmentHaplotype(CurrentInd, hap, StartSnp, StopSnp)
-        use Global
         use GlobalVariablesHmmMaCH
+
         use Par_Zig_mod
         use omp_lib
 
-        implicit none
         integer, intent(in) :: CurrentInd, hap, StartSnp, StopSnp
         ! double precision, intent(IN), allocatable :: Thetas(:)
 
@@ -54,7 +57,7 @@ MODULE hmmHaplotyper
         call SetUpPriorHaplotype
         call ConditionHaplotypeOnData(CurrentInd, marker, hap)
 
-        ! do marker=2,nSnpHmm
+        ! do marker=2,inputParams%nsnp
         do marker=2,StopSnp
             ! call GetSmallMemoryBlock
             call TransposeHaplotype(marker-1, marker, Thetas(marker-1))
@@ -65,8 +68,9 @@ MODULE hmmHaplotyper
 
     !######################################################################
     subroutine ImputeHaplotypeAlleles(CurrentInd, Marker, gamete, Hap)
-        use GlobalVariablesHmmMaCH
+
         use omp_lib
+        use GlobalVariablesHmmMaCH
         implicit none
 
         integer, intent(in) :: CurrentInd, Marker, gamete, Hap
@@ -87,9 +91,10 @@ MODULE hmmHaplotyper
 
     !######################################################################
     subroutine ImputeHaplotypeAllelesNGS(CurrentInd, Marker, gamete, Hap)
-        use Global
         use GlobalVariablesHmmMaCH
+
         use omp_lib
+        use GlobalVariablesHmmMaCH
         use Par_Zig_mod
         implicit none
 
@@ -106,8 +111,8 @@ MODULE hmmHaplotyper
 
         call GetErrorRatebyMarker(Marker, ErrorRate)
 
-        RefAll = ReferAllele(CurrentInd,Marker)
-        AltAll = AlterAllele(CurrentInd,marker)
+        RefAll = pedigree%pedigree(currentInd)%ReferAllele(marker)
+        AltAll = pedigree%pedigree(currentInd)%AlterAllele(marker)
 
         prior_11 = shotgunErrorMatrix(0,RefAll,AltAll)
         prior_12 = shotgunErrorMatrix(1,RefAll,AltAll)
@@ -146,9 +151,10 @@ MODULE hmmHaplotyper
 
     !######################################################################
     subroutine SampleHaplotypeSource(CurrentInd,hap)
-        use Global
         use GlobalVariablesHmmMaCH
-        use AlphaImputeInMod
+
+        use AlphaHmmInMod
+        use hmmPARAMETERS
         use Par_Zig_mod
         use omp_lib
 
@@ -157,7 +163,7 @@ MODULE hmmHaplotyper
 
         ! Local variables
         integer :: i, state, marker, Thread, Hapi
-        type(AlphaImputeInput), pointer :: inputParams !TODO make this input params
+        type(AlphaHmmInput), pointer :: inputParams !TODO make this input params
         ! double precision :: Probs(inputParams%nHapInSubH*(inputParams%nHapInSubH+1)/2)
         double precision,dimension(:), allocatable :: Probs
         double precision :: Summer, Choice, Theta, cross, nocross
@@ -171,7 +177,7 @@ MODULE hmmHaplotyper
         allocate(Probs(inputParams%nHapInSubH))
         Thread = omp_get_thread_num()
         Summer=0.0
-        Probs = ForwardProbs(:,nSnpHmm)
+        Probs = ForwardProbs(:,inputParams%nsnp)
 
         ! Calculate sum over all states
         do state=1,inputParams%nHapInSubH
@@ -194,7 +200,7 @@ MODULE hmmHaplotyper
             Hapi=INT(1+par_uni(Thread)*inputParams%nHapInSubH)
         endif
 
-        do marker=nSnpHmm-1,1,-1
+        do marker=inputParams%nsnp-1,1,-1
             ! do while (marker>1)
             ! marker=marker-1
 
@@ -255,9 +261,9 @@ MODULE hmmHaplotyper
 
     !######################################################################
     subroutine SampleSegmentHaplotypeSource(CurrentInd,hap,StartSnp,StopSnp)
-        use Global
         use GlobalVariablesHmmMaCH
-        use AlphaImputeInMod
+
+        use AlphaHmmInMod
         use Par_Zig_mod
         use omp_lib
 
@@ -266,7 +272,7 @@ MODULE hmmHaplotyper
 
         ! Local variables
         integer :: i, state, marker, Thread, Hapi, sampleHap, FromMarker, tmpMarker
-        type(AlphaImputeInput), pointer :: inputParams
+        type(AlphaHmmInput), pointer :: inputParams
 
         ! double precision :: Probs(inputParams%nHapInSubH*(inputParams%nHapInSubH+1)/2)
         double precision, allocatable, dimension(:) :: Probs
@@ -464,10 +470,11 @@ MODULE hmmHaplotyper
     subroutine TransposeHaplotype(PrecedingMarker, CurrentMarker, Theta)
         ! Calculates the probability of get a particular state at CurrentMarker
         ! from any other state at PrecedingMarker using the transition probabilities.
-        use GlobalVariablesHmmMaCH
-        use AlphaImputeInMod
+
+        use AlphaHmmInMod
+        use GlobalVariablesHmmMaCH, only : ForwardProbs
         integer, intent(IN) :: PrecedingMarker, CurrentMarker
-        type(AlphaImputeInput), pointer :: inputParams
+        type(AlphaHmmInput), pointer :: inputParams
         double precision, intent(IN) :: Theta
 
         ! Local variables
@@ -503,30 +510,31 @@ MODULE hmmHaplotyper
 
     !######################################################################
     subroutine ConditionHaplotypeOnData(CurrentInd, Marker, hap)
-        use Global
         use GlobalVariablesHmmMaCH
+
         use Par_Zig_mod
         use omp_lib
-        use AlphaImputeInMod
+        use AlphaHmmInMod
+        use hmmPARAMETERS
 
         implicit none
         integer, intent(IN) :: CurrentInd, Marker
         integer, intent(IN) :: hap
 
         ! Local variables
-        integer :: i, j, Index
+        integer :: i
         integer :: RefAll, AltAll, allele
         double precision :: factors(0:1), ErrorRate
         double precision :: prior_11, prior_12, prior_22, summ
-        type(AlphaImputeInput), pointer :: inputParams
+        type(AlphaHmmInput), pointer :: inputParams
 
         inputParams => defaultInput
 
         call GetErrorRatebyMarker(Marker, ErrorRate)
         ! if (defaultInput%HMMOption==RUN_HMM_NGS .AND. GlobalInbredInd(CurrentInd)==.FALSE.) then
         if (defaultInput%HMMOption==RUN_HMM_NGS) then
-            RefAll = ReferAllele(CurrentInd,Marker)
-            AltAll = AlterAllele(CurrentInd,Marker)
+            RefAll = pedigree%pedigree(currentInd)%ReferAllele(marker)
+            AltAll = pedigree%pedigree(currentInd)%AlterAllele(marker)
 
             if (RefAll+AltAll == 0) then
                 return
@@ -574,15 +582,15 @@ MODULE hmmHaplotyper
         ! Set up de initial state distribution, that is, the probability that
         ! the sequence starts with the state Sj:
         !   PIj = P(t1=Sj) = ForwardProb(j,1)
-        use AlphaImputeInMod
-        use GlobalVariablesHmmMaCH
+        use AlphaHmmInMod
+        use GlobalVariablesHmmMaCH, only: forwardProbs
+
         use omp_lib
 
-        implicit none
         integer :: i
         double precision :: prior
 
-        type(AlphaImputeInput), pointer :: inputParams
+        type(AlphaHmmInput), pointer :: inputParams
         inputParams => defaultInput
         ! Initially, every state is equally possible
         prior=1.0/inputParams%nHapInSubH
