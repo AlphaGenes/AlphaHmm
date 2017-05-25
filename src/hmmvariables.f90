@@ -43,8 +43,8 @@ module GlobalVariablesHmmMaCH
     real,allocatable,dimension (:,:) :: ProbImputeGenosHmm
     real,allocatable,dimension (:,:,:) :: ProbImputePhaseHmm
     integer, allocatable :: GenosCounts(:,:,:)
-    integer(kind=1),allocatable,dimension (:,:,:) :: ImputePhaseHMM
-integer(kind=1), allocatable, dimension(:,:) :: imputeGenosHMM
+    integer(kind=1),pointer,dimension (:,:,:) :: ImputePhaseHMM
+integer(kind=1), pointer, dimension(:,:) :: imputeGenosHMM
     type(pedigreeHolder), pointer :: pedigree
     integer,allocatable,dimension (:,:) :: Reads
 
