@@ -8,7 +8,7 @@ main.f90
 ExternalHMMWrappers.f90
 HMMInputOutputModule.f90
 par_zig_mod.f90
-#utils.f90
+utils.f90
 )
 
 if (AlphaHMMEXE)
