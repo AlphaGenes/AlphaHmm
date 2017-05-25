@@ -28,17 +28,21 @@ module AlphaHmmInMod
     type AlphaHmmInput
 
     ! character(len=300) :: PedigreeFile = "Pedigree.txt"     ! Pedigree File
-    character(len=300) :: GenotypeFile = "Genotypes.txt"    ! Genotype File
+    character(len=300):: PedigreeFile = "Pedigree.txt",GenotypeFile="Genotypes.txt",TrueGenotypeFile="TrueGenotypes.txt",GenderFile="None",InbredAnimalsFile="None", HapListFile="None"
 
-    integer(kind=1) :: HMMOption                            ! Tipe of HMM imputation (Genotype vs Sequence)
+    integer(kind=1) :: HMMOption                            ! Type of HMM imputation (Genotype vs Sequence)
 
-    integer(kind=int32) :: nSnp                             ! Number of SNPs to process
+    integer(kind=int32) :: nSnp                             ! Number of SNPs to process in the hmm algorithm
     integer(kind=int32) :: nHapInSubH                       ! Number of haplotypes
     integer(kind=int32) :: HmmBurnInRound                   ! Number of burnin rounds of the MCMC
     integer(kind=int32) :: nRoundsHmm                       ! Number of rounds of the MCMC
     integer(kind=int32) :: useProcs                         ! Number of threads to be used
+    real(kind=real32) :: imputedThreshold                   !< threshold of imputed snps
+    real(kind=real32) :: phasedThreshold                   !< threshold of phase information accept
 
-
+    integer :: AnimalFileUnit, prePhasedFileUnit, pedigreeFileUnit,genotypeFileUnit,GenderFileUnit,HapListUnit
+    integer(kind=int32) :: seed
+    logical :: HapList=.FALSE.
     contains
         procedure :: ReadInParameterFile
     end type AlphaHmmInput
@@ -62,9 +66,9 @@ contains
         use AlphaHouseMod, only: parseToFirstWhitespace,splitLineIntoTwoParts,toLower
         use hmmPARAMETERS
 
-        integer :: unit,IOStatus,i
+        integer :: unit,IOStatus
         character(len=*), intent(in) :: SpecFile
-        class(AlphaImputeInput), optional, intent(inout),target :: this
+        class(AlphaHmmInput), optional, intent(inout),target :: this
 
         character(len=300) :: first, line
         character(len=:), allocatable::tag
@@ -72,6 +76,7 @@ contains
 
         open(newunit=unit, file=SpecFile, action="read", status="old")
         IOStatus = 0
+        this%imputedThreshold = 100
         READFILE: do while (IOStatus==0)
             read(unit,"(A)", IOStat=IOStatus)  line
             if (len_trim(line)==0) then

@@ -24,11 +24,14 @@
 Program AlphaHMM
     use hmmModule
     use AlphaHmmInMod
-    use InputOutputModule
     use hmmHeader
+    use GlobalVariablesHmmMaCH
     implicit none
 
+    character(len=4096) :: cmd, SpecFile
+    type(AlphaHmmInput), pointer :: inputParams
     inputParams => defaultInput
+
     if (Command_Argument_Count() > 0) then
         call get_command_argument(1,cmd)
         if (cmd(1:2) .eq. "-v") then
@@ -45,8 +48,7 @@ Program AlphaHMM
 
 
     call Titles
-
-    call ReadInParameterFile
+    call inputParams%ReadInParameterFile(specfile)
     ! call ReadInput
 
     ! call HMMControler(Parameters)

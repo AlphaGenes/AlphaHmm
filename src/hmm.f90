@@ -27,12 +27,14 @@ MODULE hmmModule
 
 CONTAINS
 
+
     !######################################################################
     subroutine HMMController(HMM)
-        use Global
         use GlobalVariablesHmmMaCH
+        use hmmParameters
+
         use Par_Zig_mod
-        use AlphaImputeInMod
+        use AlphaHmmInMod
         use omp_lib
         use random
 
@@ -45,7 +47,7 @@ CONTAINS
         double precision :: Theta
         integer, allocatable :: seed(:)
         integer :: grainsize, count, secs, seed0
-        type(AlphaImputeInput), pointer :: inputParams
+        type(AlphaHmmInput), pointer :: inputParams
         integer, allocatable, dimension(:,:) :: InbredHmmMaCH
         interface
             subroutine ReadInbred(PhaseFileUnit, PhasedData, nInbred)
@@ -57,8 +59,9 @@ CONTAINS
 
         inputParams => defaultInput
 
-        ! Number of SNPs in the HMM algorithm
-        nSnpHmm=inputParams%nsnp
+
+        allocate(Reads(pedigree%nGenotyped,inputParams%nsnp))
+
 
         ! Read the phased individuals if HMM Only or Sequence data
 #ifdef DEBUG
@@ -70,7 +73,7 @@ CONTAINS
         end if
 
         ! Number of animals in the HMM
-        nIndHmmMaCH = ped%nGenotyped + nAnisInbred
+        nIndHmmMaCH = pedigree%nGenotyped + nAnisInbred
 
         ! ALLOCATE MEMORY
 #ifdef DEBUG
@@ -84,7 +87,6 @@ CONTAINS
         allocate(PhaseHmmMaCH(nIndHmmMaCH,inputParams%nsnp,2))
         ! Allocate memory to store Animals contributing to the Template
         ! Haplotype Library
-        allocate(GlobalHmmID(nIndHmmMaCH))
         allocate(GlobalHmmMachID(nIndHmmMaCH))
 
         ! Allocate memory to store Animals Highly Dense Genotyped
@@ -106,30 +108,30 @@ CONTAINS
         ProbImputePhaseHmm=0.0
 
         ! The full Template Haplotype Library, H (Li et al. 2010, Appendix)
-        allocate(FullH(nIndHmmMaCH,nSnpHmm,2))
+        allocate(FullH(nIndHmmMaCH,inputParams%nsnp,2))
 
         ! Vector of Combination of genotyping error (Li et al. 2010, Appendix)
         ! Epsilon is related with the Penetrance Matrix of the HMM which gives
         ! the emision probabilities for each state/marker/snp.
-        allocate(Epsilon(nSnpHmm))
-        allocate(Penetrance(nSnpHmm,0:2,0:2))
+        allocate(Epsilon(inputParams%nsnp))
+        allocate(Penetrance(inputParams%nsnp,0:2,0:2))
 
         ! Vector of Combination of population recombination (Li et al. 2010, Appendix)
         ! Thetas is related with the transition Matrix of the HMM. Since there
-        ! are nSnpHmm states, there are nSnpHmm transitions between states.
+        ! are inputParams%nsnp states, there are inputParams%nsnp transitions between states.
         ! WARNING: Is this correctly implemented throughout the hmm process??
-        allocate(Thetas(nSnpHmm-1))
+        allocate(Thetas(inputParams%nsnp-1))
 
-        allocate(ErrorUncertainty(nSnpHmm))
-        allocate(ErrorMatches(nSnpHmm))
-        allocate(ErrorMismatches(nSnpHmm))
+        allocate(ErrorUncertainty(inputParams%nsnp))
+        allocate(ErrorMatches(inputParams%nsnp))
+        allocate(ErrorMismatches(inputParams%nsnp))
 
         ! Crossover parameter in order to maximize the investigation of
         ! different mosaic configurations
         ! WARNING: crossovers are related with the transition matrix of the HMM.
-        !          If there are nSnpHmm states and nSnpHmm-1 transitions
-        !          between states, why the number of crossovers is nSnpHmm??
-        allocate(Crossovers(nSnpHmm-1))
+        !          If there are inputParams%nsnp states and inputParams%nsnp-1 transitions
+        !          between states, why the number of crossovers is inputParams%nsnp??
+        allocate(Crossovers(inputParams%nsnp-1))
 
         if (HMM==RUN_HMM_NGS) then
             allocate(ShotgunErrorMatrix(0:2,0:MAX_READS_COUNT,0:MAX_READS_COUNT))
@@ -154,7 +156,7 @@ CONTAINS
         call system_clock(count)
         secs = mod(count,int(1e6))
         seed0 = secs*1e5
-        inputParams%idum=-abs(seed0)
+        inputParams%seed=-abs(seed0)
         do i = 1,inputParams%useprocs
             call random_number(r)
             seed(i) = seed0*r
@@ -168,7 +170,7 @@ CONTAINS
 #endif
 
         ! Populate genotype and phased data from input
-        call ParseMaCHData(HMM, InbredHmmMaCH, ped%nGenotyped, nAnisInbred)
+        call ParseMaCHData(HMM, InbredHmmMaCH, pedigree%nGenotyped, nAnisInbred)
         if (nAnisInbred > 0) then
             deallocate(InbredHmmMaCH)
         end if
@@ -177,7 +179,7 @@ CONTAINS
         Epsilon=EPSILON_ERROR
         Thetas=0.01
 
-        do i=1,nSnpHmm
+        do i=1,inputParams%nsnp
             call SetPenetrance(i, EPSILON_ERROR)
         enddo
 
@@ -190,7 +192,7 @@ CONTAINS
 #endif
 
         ! Set up Reference haplotypes and HMM parameters
-        call SetUpEquations(HMM, ped%nGenotyped, nAnisInbred)
+        call SetUpEquations(HMM, pedigree%nGenotyped, nAnisInbred)
 
         open (unit=6,form='formatted')
 
@@ -199,7 +201,7 @@ CONTAINS
         print*, "    Using", inputParams%useprocs, "processors of", nprocs
 
         ! Allocate and set up variables storing allele frequencies
-        allocate(GenosCounts(nIndHmmMaCH,nSnpHmm,2))
+        allocate(GenosCounts(nIndHmmMaCH,inputParams%nsnp,2))
         GenosCounts=0
 
         tT=0.0
@@ -251,18 +253,18 @@ CONTAINS
 
     !######################################################################
     subroutine ParseMaCHData(HMM, PhasedData, nGenotyped, nInbred)
-        use Global
         use GlobalVariablesHmmMaCH
-        use AlphaImputeInMod
+        use hmmParameters
+        use AlphaHmmInMod
 
         implicit none
 
         integer(kind=1),intent(in) :: HMM
         integer, intent(in) :: nGenotyped, nInbred
-        integer, intent(in) :: PhasedData(nGenotyped+nInbred, nSnpHmm)
+        integer, intent(in) :: PhasedData(:,:)
 
         integer :: maxHaps
-        type(AlphaImputeInput), pointer :: inputParams
+        type(AlphaHmmInput), pointer :: inputParams
 
         inputParams => defaultInput
 
@@ -295,12 +297,12 @@ CONTAINS
     !######################################################################
     subroutine ParseMaCHPhased(PhasedData, nGenotyped, nInbred)
         use ISO_Fortran_Env
-        use Global
         use GlobalVariablesHmmMaCH
+
 
         implicit none
         integer, intent(in) :: nGenotyped, nInbred
-        integer, intent(in) :: PhasedData(nInbred,nSnpHmm)
+        integer, intent(in) :: PhasedData(:,:)
 
         integer :: i
 
@@ -318,8 +320,8 @@ CONTAINS
     !######################################################################
     subroutine ReadInbred(PhaseFileUnit, PhasedData, nInbred)
         use ISO_Fortran_Env
-        use Global
         use GlobalVariablesHmmMaCH
+        use AlphaHmmInMod
 
         implicit none
 
@@ -331,6 +333,8 @@ CONTAINS
         logical :: opened, named
         character(len=300) :: InbredFile
         character(len=20) :: dumID
+        type(AlphaHmmInput), pointer :: inputParams
+        inputParams => defaultInput
 
         inquire(unit=PhaseFileUnit, opened=opened, named=named, name=InbredFile)
 
@@ -351,7 +355,7 @@ CONTAINS
         enddo
         rewind(PhaseFileUnit)
 
-        allocate(PhasedData(nInbred,nSnpHmm))
+        allocate(PhasedData(nInbred,inputParams%nsnp))
 
         do i=1,nInbred
             read (PhaseFileUnit,*) dumID, PhasedData(i,:)
@@ -403,13 +407,13 @@ CONTAINS
 
     !######################################################################
     subroutine ParseMaCHDataNGS(nGenotyped)
-        use Global
         use GlobalVariablesHmmMaCH
-        use AlphaImputeInMod
+
+        use AlphaHmmInMod
         implicit none
         integer, intent(in) :: nGenotyped
         integer :: i, j, nHaps, HapsLeft
-        type(AlphaImputeInput), pointer :: inputParams
+        type(AlphaHmmInput), pointer :: inputParams
         character(len=20), allocatable :: HapList(:)
 
         interface
@@ -433,7 +437,7 @@ CONTAINS
 
         do i=1,nGenotyped
             ! Add animal's diploid to the Diploids Library
-            GlobalHmmID(i)=i
+            pedigree%genotypeMap(i)=i
             ! Find individuals sequenced with high coverage
             if ((float(count(reads(i,:)/=READ_MISSING))/inputParams%nSnp)>0.90) then
                 ! WARNING: If this variable only stores 1 and 0, then its
@@ -444,7 +448,7 @@ CONTAINS
                 ! do j=1,HapsLeft
                 ! TODO: CHANGE THIS TO A WHILE LOOP
                 do j=1,nHaps
-                    if (ped%pedigree(GlobalHmmID(i))%originalID == HapList(j)) then
+                    if (pedigree%pedigree(pedigree%genotypeMap(i))%originalID == HapList(j)) then
                         GlobalInbredInd(i) = .TRUE.
                         exit
                     endif
@@ -460,15 +464,15 @@ CONTAINS
     !######################################################################
     subroutine ParseMaCHDataGenos(nGenotyped)
         ! subroutine ParseMaCHData
-        use Global
         use GlobalVariablesHmmMaCH
+
         use Utils
-        use AlphaImputeInMod
+        use AlphaHmmInMod
         use iso_fortran_env
 
         implicit none
 
-        type(AlphaImputeInput), pointer :: inputParams
+        type(AlphaHmmInput), pointer :: inputParams
         integer, intent(in) :: nGenotyped
 
         integer :: i,j,k, NoGenosUnit, nIndvG
@@ -488,9 +492,8 @@ CONTAINS
         ! store it in PhaseHmmMaCH and GenosHmmMaCH, and keep track of  which
         ! gamete is phased (GlobalHmmPhasedInd) and the high-denisity
         ! genotyped animal (GlobalHmmHDInd)
-        GlobalHmmID = ped%genotypeMap
 
-        !     do i = 1, ped%pedigreeSize
+        !     do i = 1, pedigree%pedigreeSize
         !         if (trim(Id(i)) == trim(GenotypeID(j))) then
         !             GlobalHmmID(j) = i
         !         end if
@@ -499,21 +502,21 @@ CONTAINS
 
         do i=1,nGenotyped
             ! Check if individual is in the genotype file
-            if (ped%pedigree(GlobalHmmID(i))%isGenotyped() == .TRUE.) then
+            if (pedigree%pedigree(pedigree%genotypeMap(i))%isGenotyped() == .TRUE.) then
                 ! k=k+1
                 nIndvG=nIndvG+1
                 k=i
                 ! GlobalHmmID(k)=i
 
                 ! Add animal's diploid to the Diploids Library
-                GenosHmmMaCH(k,:)=ImputeGenos(i,:)
+                GenosHmmMaCH(k,:)=imputeGenosHMM(i,:)
 
                 ! Take the phased information from AlphaImpute
-                PhaseHmmMaCH(k,:,1)=ImputePhase(i,:,1)
-                PhaseHmmMaCH(k,:,2)=ImputePhase(i,:,2)
+                PhaseHmmMaCH(k,:,1)=imputePhaseHmm(i,:,1)
+                PhaseHmmMaCH(k,:,2)=imputePhaseHmm(i,:,2)
 
                 ! Check if this animal is Highly Dense genotyped
-                if ((float(count(GenosHmmMaCH(k,:)==MISSING))/nSnpHmm)<0.10) then
+                if ((float(count(GenosHmmMaCH(k,:)==MISSING))/inputParams%nsnp)<0.10) then
                     GlobalHmmHDInd(k)=1
                 endif
 
@@ -525,10 +528,10 @@ CONTAINS
                 enddo
 
                 ! Check if this individual has its haplotypes phased
-                if (float(count(PhaseHmmMaCH(k,:,1)/=ALLELE_MISSING))/nSnpHmm >= (imputedThreshold/100.0)) Then
+                if (float(count(PhaseHmmMaCH(k,:,1)/=ALLELE_MISSING))/inputParams%nsnp >= (imputedThreshold/100.0)) Then
                     GlobalHmmPhasedInd(k,1)=.TRUE.
                 endif
-                if (float(count(PhaseHmmMaCH(k,:,2)/=ALLELE_MISSING))/nSnpHmm >= (imputedThreshold/100.0)) Then
+                if (float(count(PhaseHmmMaCH(k,:,2)/=ALLELE_MISSING))/inputParams%nsnp >= (imputedThreshold/100.0)) Then
                     GlobalHmmPhasedInd(k,2)=.TRUE.
                 endif
 
@@ -562,18 +565,18 @@ CONTAINS
         ! Create a Template Haplotype Library, H, and create HMM for each
         ! individual
 
-        use Global
         use GlobalVariablesHmmMaCH
+        use hmmParameters
         use hmmHaplotyper
         use Utils
         use random
         use Par_Zig_mod
         use omp_lib
-        use AlphaImputeInMod
+        use AlphaHmmInMod
 
         implicit none
 
-        type(AlphaImputeInput), pointer :: inputParams
+        type(AlphaHmmInput), pointer :: inputParams
         integer, intent(in) :: CurrentInd
         integer(kind=1), intent(in) :: HMM
 
@@ -590,48 +593,48 @@ CONTAINS
         ! ForwardPrbos(:,1) are the prior probabilities
         ! Allocate all possible state sequencies
         states = inputParams%nhapinsubh*(inputParams%nhapinsubh+1)/2
-        ! allocate(ForwardProbs(states,nSnpHmm))
-        allocate(SubH(inputParams%nhapinsubh,nSnpHmm))
+        ! allocate(ForwardProbs(states,inputParams%nsnp))
+        allocate(SubH(inputParams%nhapinsubh,inputParams%nsnp))
 
         call ExtractTemplate(HMM, currentInd, nIndHmmMaCH)
 
         StartSnp=1
-        StopSnp=nSnpHmm
+        StopSnp=inputParams%nsnp
         if (HMM==RUN_HMM_ONLY .OR. HMM==RUN_HMM_NGS) then
 
             if (GlobalInbredInd(CurrentInd)==.TRUE.) then
-                allocate(ForwardProbs(inputParams%nhapinsubh,nSnpHmm))
-                call ForwardAlgorithmForSegmentHaplotype(CurrentInd,1,1,nSnpHmm)     ! Paternal haplotype
-                call SampleSegmentHaplotypeSource(CurrentInd,1,1,nSnpHmm)
+                allocate(ForwardProbs(inputParams%nhapinsubh,inputParams%nsnp))
+                call ForwardAlgorithmForSegmentHaplotype(CurrentInd,1,1,inputParams%nsnp)     ! Paternal haplotype
+                call SampleSegmentHaplotypeSource(CurrentInd,1,1,inputParams%nsnp)
 
                 deallocate(ForwardProbs)
-                allocate(ForwardProbs(inputParams%nhapinsubh,nSnpHmm))
-                call ForwardAlgorithmForSegmentHaplotype(CurrentInd,2,1,nSnpHmm)     ! Maternal haplotype
-                call SampleSegmentHaplotypeSource(CurrentInd,2,1,nSnpHmm)
+                allocate(ForwardProbs(inputParams%nhapinsubh,inputParams%nsnp))
+                call ForwardAlgorithmForSegmentHaplotype(CurrentInd,2,1,inputParams%nsnp)     ! Maternal haplotype
+                call SampleSegmentHaplotypeSource(CurrentInd,2,1,inputParams%nsnp)
             else
-                allocate(ForwardProbs(states,nSnpHmm))
+                allocate(ForwardProbs(states,inputParams%nsnp))
                 call ForwardAlgorithm(CurrentInd)
                 call SampleChromosomes(CurrentInd,StartSnp,StopSnp)
             end if
         else
-            if (nGametesPhased/float(2*ped%pedigreeSize)>inputParams%phasedThreshold/100.0) then
+            if (nGametesPhased/float(2*pedigree%pedigreeSize)>inputParams%phasedThreshold/100.0) then
                 if (GlobalHmmPhasedInd(CurrentInd,1)/=.TRUE. .AND. GlobalHmmPhasedInd(CurrentInd,2)/=.TRUE.) Then
-                    allocate(ForwardProbs(states,nSnpHmm))
+                    allocate(ForwardProbs(states,inputParams%nsnp))
                     call ForwardAlgorithm(CurrentInd)
-                    call SampleChromosomes(CurrentInd,1,nSnpHmm)
+                    call SampleChromosomes(CurrentInd,1,inputParams%nsnp)
                 else
-                    allocate(ForwardProbs(inputParams%nhapinsubh,nSnpHmm))
-                    call ForwardAlgorithmForSegmentHaplotype(currentInd,1,1,nSnpHmm)     ! Paternal haplotype
-                    call SampleSegmentHaplotypeSource(CurrentInd,1,1,nSnpHmm)
+                    allocate(ForwardProbs(inputParams%nhapinsubh,inputParams%nsnp))
+                    call ForwardAlgorithmForSegmentHaplotype(currentInd,1,1,inputParams%nsnp)     ! Paternal haplotype
+                    call SampleSegmentHaplotypeSource(CurrentInd,1,1,inputParams%nsnp)
                     deallocate(ForwardProbs)
-                    allocate(ForwardProbs(inputParams%nhapinsubh,nSnpHmm))
-                    call ForwardAlgorithmForSegmentHaplotype(currentInd,2,1,nSnpHmm)     ! Paternal haplotype
-                    call SampleSegmentHaplotypeSource(CurrentInd,2,1,nSnpHmm)
+                    allocate(ForwardProbs(inputParams%nhapinsubh,inputParams%nsnp))
+                    call ForwardAlgorithmForSegmentHaplotype(currentInd,2,1,inputParams%nsnp)     ! Paternal haplotype
+                    call SampleSegmentHaplotypeSource(CurrentInd,2,1,inputParams%nsnp)
                 endif
             else
-                allocate(ForwardProbs(states,nSnpHmm))
+                allocate(ForwardProbs(states,inputParams%nsnp))
                 call ForwardAlgorithm(CurrentInd)
-                call SampleChromosomes(CurrentInd,1,nSnpHmm)
+                call SampleChromosomes(CurrentInd,1,inputParams%nsnp)
             endif
         endif
 
@@ -653,7 +656,7 @@ CONTAINS
         write(0,*) 'DEBUG: Calculate genotype counts [MaCHForInd]'
 #endif
         if (GlobalRoundHmm>inputParams%hmmburninround) then
-            do i=1,nSnpHmm
+            do i=1,inputParams%nsnp
                 genotypeInt = FullH(CurrentInd,i,1)+FullH(CurrentInd,i,2)
                 if (genotypeInt==2) then
                     GenosCounts(CurrentInd,i,2)=GenosCounts(CurrentInd,i,2)+1
@@ -689,15 +692,16 @@ CONTAINS
 
     !######################################################################
     subroutine SampleChromosomes(CurrentInd,StartSnp,StopSnp)
-        use Global
         use GlobalVariablesHmmMaCH
+
         use omp_lib
         use Par_Zig_mod
-        use AlphaImputeInMod
+        use AlphaHmmInMod
+        use hmmParameters
         implicit none
 
         integer,intent(in) :: CurrentInd,StartSnp,StopSnp
-        type(AlphaImputeInput), pointer :: inputParams
+        type(AlphaHmmInput), pointer :: inputParams
         ! Local variables
         integer :: i,j,k,l,SuperJ,Index,OffOn,State1,State2,TmpJ,TopBot,FirstState,SecondState,Tmp,Thread
         double precision :: Summer,Choice,Sum00,Sum01,Sum10,Sum11
@@ -723,7 +727,7 @@ CONTAINS
         enddo
 
         ! Sample number at random and select state: (State1,State2)
-        !Choice=ran1(inputParams%idum)*Summer
+        !Choice=ran1(inputParams%seed)*Summer
         Choice = par_uni(Thread)*Summer
         Summer=0.0
         Index=0
@@ -804,7 +808,7 @@ CONTAINS
 
             !Sample number and decide how many state changes occurred between the
             !two positions
-            !Choice=ran1(inputParams%idum)*Summer
+            !Choice=ran1(inputParams%seed)*Summer
             Choice = par_uni(Thread)*Summer
 
             !The most likely outcome is that no changes occur ...
@@ -904,7 +908,7 @@ CONTAINS
             enddo
 
             ! Shuffle haplotypes at random
-            !if (ran1(inputParams%idum)>0.5) then
+            !if (ran1(inputParams%seed)>0.5) then
             if (par_uni(Thread)>0.5) then
                 Tmp=State1
                 State2=State1
@@ -933,7 +937,7 @@ CONTAINS
         ! Impute alleles to a haplotype region. The region is from FromMarker
         ! to ToMarker, none of them included.
 
-        use GlobalVariablesHmmMaCH
+
         implicit none
 
         integer,intent(in) :: CurrentInd,FromMarker,ToMarker,State,TopBot
@@ -953,14 +957,15 @@ CONTAINS
         ! are observed -- the only constraint is that we must start at
         ! fromState and end at toState with at least one intervening recombinant
 
-        use GlobalVariablesHmmMaCH
+
         use omp_lib
         use Par_Zig_mod
-        use AlphaImputeInMod
+        use AlphaHmmInMod
+        use GlobalVariablesHmmMaCH
         implicit none
 
         integer,intent(in) :: CurrentInd,TopBot,FromMarker,ToMarker,FromState,ToState
-        type(AlphaImputeInput), pointer :: inputParams
+        type(AlphaHmmInput), pointer :: inputParams
         ! Local variables
         integer :: i,State,FromMarkerLocal, Thread
         double precision :: Recomb,Theta1
@@ -983,7 +988,7 @@ CONTAINS
         ! Impute a path between the two end markers
         do while (FromMarkerLocal<ToMarker-1)
             ! Random recombination
-            !Recomb=ran1(inputParams%idum)*Theta
+            !Recomb=ran1(inputParams%seed)*Theta
             Recomb = par_uni(Thread)*Theta
 
             ! Recombination fraction of the FromMarkerLocal
@@ -1028,9 +1033,9 @@ CONTAINS
                 FromMarkerLocal=FromMarkerLocal+1
 
                 ! WARNING: Not really a bug, but not used a coherent notation
-                !ToState=int(ran1(inputParams%idum)*inputParams%nhapinsubh)+1
+                !ToState=int(ran1(inputParams%seed)*inputParams%nhapinsubh)+1
                 !call ImputeAllele(CurrentInd,FromMarkerLocal,ToState,TopBot)
-                !State=int(ran1(inputParams%idum)*inputParams%nhapinsubh)+1
+                !State=int(ran1(inputParams%seed)*inputParams%nhapinsubh)+1
                 State=int(par_uni(Thread)*inputParams%nhapinsubh)+1
 
                 call ImputeAllele(CurrentInd,FromMarkerLocal,State,TopBot)
@@ -1050,9 +1055,10 @@ CONTAINS
         ! number of uncertainties, matches and mismatches of the imputed
         ! alleles according to the genotype information that the individual
         ! carries.
-        use GlobalVariablesHmmMaCH
+
         use omp_lib
         use Par_Zig_mod
+        use GlobalVariablesHmmMaCH
         implicit none
 
         integer,intent(in) :: CurrentInd,CurrentMarker,State1,State2
@@ -1103,7 +1109,7 @@ CONTAINS
         ! If the observed allele is homozygous but the genotype is heterozygous
         if (Imputed1==Imputed2) then
             ! Impute the allele to the paternal or maternal haplotype at random
-            !if (ran1(inputParams%idum)>=0.5) then
+            !if (ran1(inputParams%seed)>=0.5) then
             if (par_uni(Thread)>=0.5) then
                 FullH(CurrentInd,CurrentMarker,1)=abs(Imputed1-1)
             else
@@ -1130,9 +1136,10 @@ CONTAINS
     subroutine ForwardAlgorithm(CurrentInd)
         ! Update the forward variable of the HMM model
 
-        use GlobalVariablesHmmMaCH
-        use omp_lib
 
+        use omp_lib
+        use GlobalVariablesHmmMaCH
+        use AlphaHmmInMod
         implicit none
 
         integer, intent(in) :: CurrentInd
@@ -1140,6 +1147,8 @@ CONTAINS
 
         ! Local variables
         integer :: j,PrecedingMarker
+          type(AlphaHmmInput), pointer :: inputParams
+        inputParams => defaultInput
 
         ! Setup the initial state distributions
 
@@ -1166,11 +1175,11 @@ CONTAINS
         write(0,*) 'DEBUG: Calculate Forward variables [ForwardAlgorithm]'
 #endif
 
-        do j=2,nSnpHmm
+        do j=2,inputParams%nsnp
             ! Cumulative recombination fraction allows us to skip uninformative positions
             Theta=Theta+Thetas(j-1)-Theta*Thetas(j-1)
             ! Skip over uninformative positions to save time
-            if ((GenosHmmMaCH(CurrentInd,j)/=MISSING).or.(j==nSnpHmm)) then
+            if ((GenosHmmMaCH(CurrentInd,j)/=MISSING).or.(j==inputParams%nsnp)) then
                 call Transpose(j,PrecedingMarker,Theta)
                 call ConditionOnData(CurrentInd,j)
                 PrecedingMarker=j
@@ -1184,9 +1193,10 @@ CONTAINS
     subroutine ForwardAlgorithmForSegment(CurrentInd, StartSnp, StopSnp)
         ! Update the forward variable of the HMM model
 
-        use GlobalVariablesHmmMaCH
-        use omp_lib
 
+        use omp_lib
+        use GlobalVariablesHmmMaCH
+        use AlphaHmmInMod
         implicit none
 
         integer, intent(in) :: CurrentInd, StartSnp, StopSnp
@@ -1194,7 +1204,8 @@ CONTAINS
 
         ! Local variables
         integer :: j,PrecedingMarker
-
+        type(AlphaHmmInput), pointer :: inputParams
+        inputParams => defaultInput
         ! Setup the initial state distributions
 
         call SetUpPrior
@@ -1221,12 +1232,12 @@ CONTAINS
         write(0,*) 'DEBUG: Calculate Forward variables [ForwardAlgorithm]'
 #endif
 
-        ! do j=2,nSnpHmm
+        ! do j=2,inputParams%nsnp
         do j=2,StopSnp
             ! Cumulative recombination fraction allows us to skip uninformative positions
             Theta=Theta+Thetas(j-1)-Theta*Thetas(j-1)
             ! Skip over uninformative positions to save time
-            if ((GenosHmmMaCH(CurrentInd,j)/=MISSING).or.(j==nSnpHmm)) then
+            if ((GenosHmmMaCH(CurrentInd,j)/=MISSING).or.(j==inputParams%nsnp)) then
                 call Transpose(j,PrecedingMarker,Theta)
                 call ConditionOnData(CurrentInd,j)
                 PrecedingMarker=j
@@ -1241,13 +1252,14 @@ CONTAINS
         ! Calculates the probability of get a particular state at CurrentMarker
         ! from any other state at PrecedingMarker using the transition probabilities.
         ! It basically calculates the first term of the forward variable.
+
+        use AlphaHmmInMod
         use GlobalVariablesHmmMaCH
-        use AlphaImputeInMod
         implicit none
 
         integer,intent(in) :: CurrentMarker,PrecedingMarker
         double precision,intent(in) :: Theta
-        type(AlphaImputeInput), pointer :: inputParams
+        type(AlphaHmmInput), pointer :: inputParams
         !Local variables
         integer :: i,j,Index
         double precision, dimension(:), allocatable :: Marginals
@@ -1365,13 +1377,13 @@ CONTAINS
         ! Introduce the emission probabilities (the probability of observe a
         ! given genotype) into the forward variable of the HMM.
         ! It basically calculate the second term of the forward variables
-        use Global
         use GlobalVariablesHmmMaCH
-        use AlphaImputeInMod
+        use hmmParameters
+        use AlphaHmmInMod
         implicit none
 
         integer, intent(in) :: CurrentInd, Marker
-        type(AlphaImputeInput), pointer :: inputParams
+        type(AlphaHmmInput), pointer :: inputParams
         ! Local variables
         integer :: i, j, Index, genotypeInt, RefAll, AltAll
         double precision :: Factors(0:1), cond_probs(0:2)
@@ -1435,23 +1447,27 @@ CONTAINS
     subroutine CalcPenetrance
         ! Initialize the Penetration matrix of the HMM as the emission
         ! probabilities matrix given in Appendix of Li et al. (2010)
-        use GlobalVariablesHmmMaCH
-        use omp_lib
 
+        use omp_lib
+        use GlobalVariablesHmmMaCH
+        use hmmParameters
+        use AlphaHmmInMod
         implicit none
 
         integer :: j, nprocs
+         type(AlphaHmmInput), pointer :: inputParams
+        inputParams => defaultInput
 
         ! Penetrance(j,i,k) = P(P_j|S_j)
         ! i = G_j = {0,1,2}
         ! k = T(S_j) = T(x_j) + T(y_j) = {0,1,2}
-        ! allocate(Penetrance(nSnpHmm,0:2,0:2))
+        ! allocate(Penetrance(inputParams%nsnp,0:2,0:2))
 
         nprocs = OMP_get_num_procs()
         ! call OMP_set_num_threads(nprocs)
 
         !$OMP PARALLEL DO DEFAULT(SHARED)
-        do j=1,nSnpHmm
+        do j=1,inputParams%nsnp
             Penetrance(j,0,0)=(1.0-Epsilon(j))**2
             Penetrance(j,0,1)=2.0*(1.0-Epsilon(j))*Epsilon(j)
             Penetrance(j,0,2)=(Epsilon(j)**2)
@@ -1472,12 +1488,14 @@ CONTAINS
         ! the sequence starts with the state Sj:
         !   PIj = P(t1=Sj) = ForwardProb(j,1)
 
-        use GlobalVariablesHmmMaCH
-        use AlphaImputeInMod
+
+        use AlphaHmmInMod
         use omp_lib
+        use GlobalVariablesHmmMaCH
+        use hmmParameters
 
         implicit none
-        type(AlphaImputeInput), pointer :: inputParams
+        type(AlphaHmmInput), pointer :: inputParams
         integer :: i,j,state
         double precision :: prior
 
@@ -1509,8 +1527,8 @@ CONTAINS
 
     !######################################################################
     subroutine SetUpEquations(HMM, nGenotyped, nInbred)
-        use Global
         use GlobalVariablesHmmMaCH
+        use hmmParameters
         implicit none
 
         integer(kind=1),intent(in) :: HMM
@@ -1538,8 +1556,8 @@ CONTAINS
 
     !######################################################################
     subroutine SetUpEquationsPhaseHaploid(nGenotyped,nInbred)
-        use Global
         use GlobalVariablesHmmMaCH
+
         use random
         implicit none
         integer, intent(in) :: nGenotyped, nInbred
@@ -1557,28 +1575,28 @@ CONTAINS
         ! Initialize the variables and parameters of the HMM model described in
         ! Li et al. 2010, Appendix
 
-        use Global
         use GlobalVariablesHmmMaCH
+
         use random
-        use AlphaImputeInMod
+        use AlphaHmmInMod
         implicit none
         integer, intent(in) :: nGenotyped
 
         integer :: i,j
-        type(AlphaImputeInput), pointer :: inputParams
+        type(AlphaHmmInput), pointer :: inputParams
         !Initialise FullH
 
         inputParams => defaultInput
         ! If the number of phased gametes from AlphaImpute is above a threshold, then
         ! haploytpes produced from AlphaImpute are used in the model (FullH)
-        if (nGametesPhased/float(2*ped%pedigreeSize)>phasedThreshold/100.0) then
+        if (nGametesPhased/float(2*pedigree%pedigreeSize)>phasedThreshold/100.0) then
             do i=1,nGenotyped
                 FullH(i,:,:)=PhaseHmmMaCH(i,:,:)
 
                 ! Missing alleles (and individuals that are not phased) are called at random
-                do j=1,nSnpHmm
+                do j=1,inputParams%nsnp
                     if (PhaseHmmMaCH(i,j,1)==ALLELE_MISSING) then
-                        if (ran1(inputParams%idum)>=0.5) then
+                        if (ran1(inputParams%seed)>=0.5) then
                             FullH(i,j,1)=0
                         else
                             FullH(i,j,1)=1
@@ -1586,7 +1604,7 @@ CONTAINS
                     endif
 
                     if (PhaseHmmMaCH(i,j,2)==ALLELE_MISSING) then
-                        if (ran1(inputParams%idum)>=0.5) then
+                        if (ran1(inputParams%seed)>=0.5) then
                             FullH(i,j,2)=0
                         else
                             FullH(i,j,2)=1
@@ -1607,15 +1625,15 @@ CONTAINS
             ! Overwrite haplotypes to use phased data in case phased haplotypes from
             ! AlphaImpute are available
 
-            ! if (nGametesPhased/float(2*ped%pedigreeSize)>phasedThreshold/100.0) then
+            ! if (nGametesPhased/float(2*pedigree%pedigreeSize)>phasedThreshold/100.0) then
 
             do i=1,nGenotyped      ! For every Individual in the Genotype file
                 if (GlobalHmmPhasedInd(i,1)==.TRUE.) then
                     FullH(i,:,1)=PhaseHmmMaCH(i,:,1)
                     !  If there is missing information in the phased data, called allele at random
-                    do j=1,nSnpHmm
+                    do j=1,inputParams%nsnp
                         if (PhaseHmmMaCH(i,j,1)==ALLELE_MISSING) then
-                            if (ran1(inputParams%idum)>=0.5) then
+                            if (ran1(inputParams%seed)>=0.5) then
                                 FullH(i,j,1)=0
                             else
                                 FullH(i,j,1)=1
@@ -1627,10 +1645,10 @@ CONTAINS
                 if (GlobalHmmPhasedInd(i,2)==.TRUE.) then
                     FullH(i,:,2)=PhaseHmmMaCH(i,:,2)
                     !  If there is missing information in the phased data, called allele at random
-                    do j=1,nSnpHmm
+                    do j=1,inputParams%nsnp
 
                         if (PhaseHmmMaCH(i,j,2)==ALLELE_MISSING) then
-                            if (ran1(inputParams%idum)>=0.5) then
+                            if (ran1(inputParams%seed)>=0.5) then
                                 FullH(i,j,2)=0
                             else
                                 FullH(i,j,2)=1
@@ -1648,20 +1666,20 @@ CONTAINS
         ! Initialize the variables and parameters of the HMM model described in
         ! Li et al. 2010, Appendix
 
-        use Global
         use GlobalVariablesHmmMaCH
+
         use random
-        use AlphaImputeInMod
+        use AlphaHmmInMod
         implicit none
         integer, intent(in) :: nGenotyped
 
         integer :: i,j
-        type(AlphaImputeInput), pointer :: inputParams
+        type(AlphaHmmInput), pointer :: inputParams
 
         inputParams => defaultInput
         !Initialise FullH
         do i=1,nGenotyped      ! For every Individual in the Genotype file
-            do j=1,nSnpHmm      ! For each SNP
+            do j=1,inputParams%nsnp      ! For each SNP
 
                 ! Phase homozygose locus
                 if (GenosHmmMaCH(i,j)==0) then
@@ -1674,7 +1692,7 @@ CONTAINS
 
                 ! Phase heterozygose case at random
                 if (GenosHmmMaCH(i,j)==1) then
-                    if (ran1(inputParams%idum)>=0.5) then
+                    if (ran1(inputParams%seed)>=0.5) then
                         FullH(i,j,1)=0
                         FullH(i,j,2)=1
                     else
@@ -1685,12 +1703,12 @@ CONTAINS
 
                 ! If locus is not genotyped, phase each haplotype at random
                 if (GenosHmmMaCH(i,j)==MISSING) then
-                    if (ran1(inputParams%idum)>=0.5) then
+                    if (ran1(inputParams%seed)>=0.5) then
                         FullH(i,j,1)=0
                     else
                         FullH(i,j,1)=1
                     endif
-                    if (ran1(inputParams%idum)>=0.5) then
+                    if (ran1(inputParams%seed)>=0.5) then
                         FullH(i,j,2)=0
                     else
                         FullH(i,j,2)=1
@@ -1705,10 +1723,10 @@ CONTAINS
         ! Initialize the variables and parameters of the HMM model described in
         ! Li et al. 2010, Appendix
 
-        use Global
         use GlobalVariablesHmmMaCH
+
         use random
-        use AlphaImputeInMod
+        use AlphaHmmInMod
         implicit none
 
         integer, intent(in) :: nGenotyped
@@ -1717,9 +1735,11 @@ CONTAINS
         double precision :: prior_11, prior_12, prior_22
         double precision :: posterior_11, posterior_12, posterior_22
         double precision :: r, frequency, summ
+        type(AlphaHmmInput), pointer :: inputParams
 
+        inputParams => defaultInput
         !Initialise FullH
-        do j=1,nSnpHmm      ! For each SNP
+        do j=1,inputParams%nsnp      ! For each SNP
             readObs = 0
             alleles = 0
 
@@ -1753,7 +1773,7 @@ CONTAINS
                     FullH(i,j,:) = 0
                 else if (posterior_12 > 0.9999) then
                     GenosHmmMaCH(i,j) = 1
-                    if (ran1(idum)<0.5) then
+                    if (ran1(inputParams%seed)<0.5) then
                         FullH(i,j,1) = 0
                         FullH(i,j,2) = 1
                     else
@@ -1770,7 +1790,7 @@ CONTAINS
                     if (r < posterior_11) then
                         FullH(i,j,:) = 0
                     else if (r < posterior_11 + posterior_12) then
-                        if (ran1(idum)<0.5) then
+                        if (ran1(inputParams%seed)<0.5) then
                             FullH(i,j,1) = 0
                             FullH(i,j,2) = 1
                         else
@@ -1802,12 +1822,17 @@ CONTAINS
     subroutine UpdateThetas
 
         use GlobalVariablesHmmMaCH
+        use hmmParameters
+        use AlphaHmmInMod
+
         implicit none
 
         integer :: i, BaseCount=1, BaseIntervals=0
         double precision :: BaseRates, BaseCrossovers=1
 
         double precision :: Scale
+        type(AlphaHmmInput), pointer :: inputParams
+        inputParams => defaultInput
 
         Scale=1.0/(nIndHmmMaCH*2)
         BaseCount=1
@@ -1817,7 +1842,7 @@ CONTAINS
 
         ! First we estimate a base line rate to be applied to intervals with
         ! 0 or 1 observed "crossovers"
-        do i=1,nSnpHmm-1
+        do i=1,inputParams%nsnp-1
             if (Crossovers(i)<=1) then
                 BaseCount=BaseCount+Crossovers(i)
                 BaseIntervals=BaseIntervals+1
@@ -1832,14 +1857,14 @@ CONTAINS
 
         ! Then we update the rate for each interval using either the number
         ! of observed crossovers (if > 1) or the baseline rate
-        do i=1,nSnpHmm-1
+        do i=1,inputParams%nsnp-1
             if (Crossovers(i)>1) then
                 Thetas(i)=Crossovers(i)*Scale
             else
                 Thetas(i)=BaseRates
             endif
         enddo
-        !print*,Thetas(nSnpHmm-1)
+        !print*,Thetas(inputParams%nsnp-1)
 
     end subroutine UpdateThetas
 
@@ -1850,15 +1875,18 @@ CONTAINS
         ! individually
 
         use GlobalVariablesHmmMaCH
+        use AlphaHmmInMod
         implicit none
 
         double precision,intent(out) :: rate
 
         ! Local variables
         integer :: i,matches=0,mismatches=0,uncertain=0
+          type(AlphaHmmInput), pointer :: inputParams
+        inputParams => defaultInput
 
         rate=0.0
-        do i=1,nSnpHmm
+        do i=1,inputParams%nsnp
             if (ErrorMismatches(i)<=2) then
                 matches=matches+ErrorMatches(i)
                 mismatches=mismatches+ErrorMismatches(i)
@@ -1871,7 +1899,7 @@ CONTAINS
 
         call UpdateError(matches, mismatches, uncertain, rate)
 
-        do i=1,nSnpHmm
+        do i=1,inputParams%nsnp
             if (ErrorMismatches(i)<=2) call SetPenetrance(i, rate)
         enddo
 
@@ -1879,8 +1907,8 @@ CONTAINS
 
     !######################################################################
     subroutine SetPenetrance(marker, Err)
+        use GlobalVariablesHmmMaCH, only: Epsilon, Penetrance
 
-        use GlobalVariablesHmmMaCH
         implicit none
 
         integer,intent(in) :: marker
@@ -1892,7 +1920,7 @@ CONTAINS
         Penetrance(marker,0,1)=2.0*(1.0-Err)*Err
         Penetrance(marker,0,2)=Err**2
         Penetrance(marker,1,0)=(1.0-Err)*Err
-        Penetrance(marker,1,1)=((1.0-Err)**2)+(Err**2)
+    Penetrance(marker,1,1)=((1.0-Err)**2)+(Err**2)
         Penetrance(marker,1,2)=(1.0-Err)*Err
         Penetrance(marker,2,0)=Err**2
         Penetrance(marker,2,1)=2.0*(1.0-Err)*Err
@@ -1904,16 +1932,20 @@ CONTAINS
     !######################################################################
     subroutine TotalCrossovers(Total)
 
-        use GlobalVariablesHmmMaCH
+        use GlobalVariablesHmmMaCH, only : crossovers
+        use AlphaHmmInMod
         implicit none
+        
 
         integer,intent(out) :: Total
-
+        type(AlphaHmmInput), pointer :: inputParams
+         integer :: i
+        inputParams => defaultInput
         ! Local variables
-        integer :: i
+       
 
         Total=0
-        do i=1,nSnpHmm-1
+        do i=1,inputParams%nsnp-1
             Total=Total+Crossovers(i)
         enddo
 
@@ -1921,8 +1953,7 @@ CONTAINS
 
     !######################################################################
     subroutine ResetCrossovers
-
-        use GlobalVariablesHmmMaCH
+            use GlobalVariablesHmmMaCH, only : crossovers
         implicit none
 
         Crossovers(:)=0
@@ -1933,7 +1964,7 @@ CONTAINS
     !######################################################################
     subroutine UpdateError(matches, mismatches, uncertain, rate)
 
-        use GlobalVariablesHmmMaCH
+            use GlobalVariablesHmmMaCH
         implicit none
 
         integer,intent(in) :: matches,mismatches,uncertain
@@ -1961,8 +1992,8 @@ CONTAINS
 
     !######################################################################
     subroutine ResetErrors
+        use GlobalVariablesHmmMaCH, only : crossovers, ErrorUncertainty, ErrorMismatches,ErrorMatches
 
-        use GlobalVariablesHmmMaCH
         implicit none
 
         ErrorUncertainty(:)=0
@@ -1973,8 +2004,8 @@ CONTAINS
 
     !######################################################################
     subroutine GetErrorRatebyMarker(marker, Err)
-        use GlobalVariablesHmmMaCH
 
+        use GlobalVariablesHmmMaCH, only : Epsilon
         implicit none
         integer, intent(in) :: marker
         double precision, intent(out) :: Err
@@ -1986,30 +2017,35 @@ CONTAINS
 
     !######################################################################
     subroutine GetErrorRate(mean)
-        use GlobalVariablesHmmMaCH
 
+        use GlobalVariablesHmmMaCH
+        use AlphaHmmInMod
         implicit none
         double precision, intent(out) :: mean
 
         double precision :: ErrorRate
         integer :: i
+          type(AlphaHmmInput), pointer :: inputParams
+        inputParams => defaultInput
 
         mean = 0.0
-        do i=1,nSnpHmm
+        do i=1,inputParams%nsnp
             call GetErrorRatebyMarker(i, ErrorRate)
             mean = mean + ErrorRate
         enddo
-        mean = mean / nSnpHmm
+        mean = mean / inputParams%nsnp
 
     end subroutine GetErrorRate
 
     !######################################################################
     subroutine ExtractTemplate(HMM, forWhom, nGenotyped)
-        use Global
         use GlobalVariablesHmmMaCH
+
         use omp_lib
         use random
         use Par_Zig_mod
+
+        use hmmParameters
 
         implicit none
         integer(kind=1) ::  HMM
@@ -2030,7 +2066,7 @@ CONTAINS
         if (HMM==RUN_HMM_ONLY) then
             call ExtractTemplateHaps(forWhom,Shuffle1,Shuffle2)
         else
-            if (nGametesPhased/float(2*ped%pedigreeSize)>phasedThreshold/100.0) then
+            if (nGametesPhased/float(2*pedigree%pedigreeSize)>phasedThreshold/100.0) then
                 ! If the number of phased gametes with AlphaImpute is above
                 ! a threshold, then template is populated with the phased data
                 call ExtractTemplateByHaps(forWhom,Shuffle1,Shuffle2)
@@ -2050,14 +2086,15 @@ CONTAINS
         ! Set the Template of Haplotypes used in the HMM model.
         ! It takes the haplotypes from HD animals
         ! It differentiates between paternal (even) and maternal (odd) haps
-        use AlphaImputeInMod
+        use AlphaHmmInMod
         use GlobalVariablesHmmMaCH
+
 
         integer, intent(in) :: Shuffle1(nIndHmmMaCH), Shuffle2(nIndHmmMaCH),CurrentInd
 
         ! Local variables
         integer :: HapCount, ShuffleInd1, ShuffleInd2
-        type(AlphaImputeInput), pointer :: inputParams
+        type(AlphaHmmInput), pointer :: inputParams
 
         inputParams => defaultInput
 
@@ -2103,13 +2140,13 @@ CONTAINS
         ! It differentiates between paternal (even) and maternal (odd) haps
 
         use GlobalVariablesHmmMaCH
-        use AlphaImputeInMod
+        use AlphaHmmInMod
 
         integer, intent(in) :: Shuffle1(nIndHmmMaCH), Shuffle2(nIndHmmMaCH),CurrentInd
 
         ! Local variables
         integer :: HapCount, ShuffleInd1, ShuffleInd2
-        type(AlphaImputeInput), pointer :: inputParams
+        type(AlphaHmmInput), pointer :: inputParams
 
         inputParams => defaultInput
         HapCount=0
@@ -2153,11 +2190,13 @@ CONTAINS
         ! Extract the Template of Haplotypes used in the HMM model.
         ! It consideres the two haps of a given individual.
 
-        use AlphaImputeInMod
+
         use GlobalVariablesHmmMaCH
+        use AlphaHmmInMod
+
 
         integer, intent(in) :: Shuffle(nIndHmmMaCH),CurrentInd
-        type(AlphaImputeInput), pointer :: inputParams
+        type(AlphaHmmInput), pointer :: inputParams
         ! Local variables
         integer :: HapCount, ShuffleInd
 
@@ -2187,8 +2226,8 @@ CONTAINS
 
     !######################################################################
     subroutine SetShotgunError(ErrorRate)
-        use Global
         use GlobalVariablesHmmMaCH
+        use hmmParameters
 
         implicit none
 
@@ -2211,8 +2250,8 @@ CONTAINS
 
     !######################################################################
     subroutine ImputeAllelesNGS(CurrentInd,CurrentMarker,State1,State2)
-        use Global
         use GlobalVariablesHmmMaCH
+
         use omp_lib
         use Par_Zig_mod
 
@@ -2318,4 +2357,4 @@ CONTAINS
     end function DFactorialInLog
 
     !######################################################################################################################################################
-MODULE hmmModule
+end MODULE hmmModule

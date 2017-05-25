@@ -19,6 +19,39 @@
 ! 2017.05.10  RAntolin - Initial Version
 !
 !-----------------------------------------------------------------------------------------------------------------------
+#ifdef _WIN32
+
+#define STRINGIFY(x)#x
+#define TOSTRING(x) STRINGIFY(x)
+
+#DEFINE DASH "\"
+#DEFINE COPY "copy"
+#DEFINE MD "md"
+#DEFINE RMDIR "RMDIR /S /Q"
+#DEFINE RM "del"
+#DEFINE RENAME "MOVE /Y"
+#DEFINE SH "BAT"
+#DEFINE EXE ".exe"
+#DEFINE NULL " >NUL"
+
+
+#else
+
+#define STRINGIFY(x)#x
+#define TOSTRING(x) STRINGIFY(x)
+
+#DEFINE DASH "/"
+#DEFINE COPY "cp"
+#DEFINE MD "mkdir"
+#DEFINE RMDIR "rm -r"
+#DEFINE RM "rm"
+#DEFINE RENAME "mv"
+#DEFINE SH "sh"
+#DEFINE EXE ""
+#DEFINE NULL ""
+
+
+#endif
 
 module hmmHeader
 

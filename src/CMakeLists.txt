@@ -5,6 +5,7 @@ hmmHaplotype.f90
 hmmHeader.f90
 hmmvariables.f90
 main.f90
+ExternalHMMWrappers.f90
 par_zig_mod.f90
 utils.f90
 
@@ -21,6 +22,6 @@ endif()
 
 
 if (AHMMLIB)
-    ADD_LIBRARY(${AHMMLIB} STATIC  ${ALPHAHMM_src}
-    TARGET_LINK_LIBRARIES(${AHMMLIB} ${AHLIB}))
+    ADD_LIBRARY(${AHMMLIB} STATIC  ${ALPHAHMM_src})
+    TARGET_LINK_LIBRARIES(${AHMMLIB} ${AHLIB})
 endif()
