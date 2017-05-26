@@ -49,13 +49,13 @@ CONTAINS
         integer :: grainsize, count, secs, seed0
         type(AlphaHmmInput), pointer :: inputParams
         integer, allocatable, dimension(:,:) :: InbredHmmMaCH
-        interface
-            subroutine ReadInbred(PhaseFileUnit, PhasedData, nInbred)
-                integer, intent(inout) :: PhaseFileUnit
-                integer, intent(out), allocatable, dimension(:,:) :: PhasedData
-                integer, intent(out) :: nInbred
-            end subroutine ReadInbred
-        end interface
+        ! interface
+        !     subroutine ReadInbred(PhaseFileUnit, PhasedData, nInbred)
+        !         integer, intent(inout) :: PhaseFileUnit
+        !         integer, intent(out), allocatable, dimension(:,:) :: PhasedData
+        !         integer, intent(out) :: nInbred
+        !     end subroutine ReadInbred
+        ! end interface
 
         inputParams => defaultInput
 
@@ -415,13 +415,6 @@ CONTAINS
         type(AlphaHmmInput), pointer :: inputParams
         character(len=20), allocatable :: HapList(:)
 
-        interface
-            subroutine getHapList(HapListUnit, ListIds, nHaps)
-                integer, intent(inout) :: HapListUnit
-                character(len=20), allocatable, intent(inout) :: ListIds(:)
-                integer, intent(out) :: nHaps
-            end subroutine getHapList
-        end interface
 
         inputParams => defaultInput
 #ifdef DEBUG
@@ -1392,7 +1385,7 @@ CONTAINS
         ! We treat missing genotypes as uninformative about the mosaic's
         ! underlying state. If we were to allow for deletions and the like,
         ! that may no longer be true.
-        ! NOTE: gentoype can be refer either to genotypes or reads if working with sequence data (NGS)
+    ! NOTE: gentoype can be refer either to genotypes or reads if working with sequence data (NGS)
         ! GlobalInbredInd(CurrentInd)==.TRUE.
         if (defaultInput%HMMOption==RUN_HMM_NGS .AND. GlobalInbredInd(CurrentInd)==.FALSE.) then
             RefAll = pedigree%pedigree(currentInd)%ReferAllele(Marker)
@@ -2234,7 +2227,8 @@ CONTAINS
         double precision, intent(in) :: ErrorRate
 
         ! Local variables
-        double precision :: DFactorialInLog, ProdFactTmp
+        double precision :: ProdFactTmp
+        double precision :: DFactorialInLog(0:MAX_READS_COUNT-1)
         integer :: i,k
 
         do k=0,MAX_READS_COUNT-1
