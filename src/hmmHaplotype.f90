@@ -96,7 +96,7 @@ MODULE hmmHaplotyper
         use omp_lib
         use GlobalVariablesHmmMaCH
         use Par_Zig_mod
-        use hmmModule
+        ! use hmmModule
         implicit none
 
         integer, intent(in) :: CurrentInd, Marker, gamete, Hap
@@ -510,6 +510,20 @@ MODULE hmmHaplotyper
     end subroutine TransposeHaplotype
 
     !######################################################################
+    subroutine GetErrorRatebyMarker(marker, Err)
+
+        use GlobalVariablesHmmMaCH, only : Epsilon
+        implicit none
+        integer, intent(in) :: marker
+        double precision, intent(out) :: Err
+
+        Err = 0.0
+        Err = Epsilon(marker)
+
+    end subroutine GetErrorRatebyMarker
+
+
+    !######################################################################
     subroutine ConditionHaplotypeOnData(CurrentInd, Marker, hap)
         use GlobalVariablesHmmMaCH
 
@@ -517,7 +531,6 @@ MODULE hmmHaplotyper
         use omp_lib
         use AlphaHmmInMod
         use hmmPARAMETERS
-        use hmmModule, only : GetErrorRatebyMarker
 
         implicit none
         integer, intent(IN) :: CurrentInd, Marker

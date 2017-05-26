@@ -1985,7 +1985,7 @@ CONTAINS
 
     !######################################################################
     subroutine ResetErrors
-        use GlobalVariablesHmmMaCH, only : crossovers, ErrorUncertainty, ErrorMismatches,ErrorMatches
+        use GlobalVariablesHmmMaCH, only : ErrorUncertainty, ErrorMismatches,ErrorMatches
 
         implicit none
 
@@ -1996,22 +1996,10 @@ CONTAINS
     end subroutine ResetErrors
 
     !######################################################################
-    subroutine GetErrorRatebyMarker(marker, Err)
-
-        use GlobalVariablesHmmMaCH, only : Epsilon
-        implicit none
-        integer, intent(in) :: marker
-        double precision, intent(out) :: Err
-
-        Err = 0.0
-        Err = Epsilon(marker)
-
-    end subroutine GetErrorRatebyMarker
-
-    !######################################################################
     subroutine GetErrorRate(mean)
 
         use GlobalVariablesHmmMaCH
+        use hmmHaplotyper
         use AlphaHmmInMod
         implicit none
         double precision, intent(out) :: mean
@@ -2246,6 +2234,7 @@ CONTAINS
     subroutine ImputeAllelesNGS(CurrentInd,CurrentMarker,State1,State2)
         use GlobalVariablesHmmMaCH
 
+        use hmmHaplotyper
         use omp_lib
         use Par_Zig_mod
 
