@@ -49,13 +49,6 @@ CONTAINS
         integer :: grainsize, count, secs, seed0
         type(AlphaHmmInput), pointer :: inputParams
         integer, allocatable, dimension(:,:) :: InbredHmmMaCH
-        ! interface
-        !     subroutine ReadInbred(PhaseFileUnit, PhasedData, nInbred)
-        !         integer, intent(inout) :: PhaseFileUnit
-        !         integer, intent(out), allocatable, dimension(:,:) :: PhasedData
-        !         integer, intent(out) :: nInbred
-        !     end subroutine ReadInbred
-        ! end interface
 
         inputParams => defaultInput
 
@@ -72,6 +65,7 @@ CONTAINS
         end if
 
         ! Number of animals in the HMM
+        ! TODO nAnisInbred broked
         nIndHmmMaCH = pedigree%nGenotyped + nAnisInbred
 
         ! ALLOCATE MEMORY
@@ -100,8 +94,8 @@ CONTAINS
 
         ! Allocate a matrix to store probabilities of genotypes and
         ! alleles for each animal
-        allocate(ProbImputeGenosHmm(nIndHmmMaCH,inputParams%nsnp))
-        allocate(ProbImputePhaseHmm(nIndHmmMaCH,inputParams%nsnp,2))
+        allocate(ProbImputeGenosHmm(pedigree%pedigreeSize-pedigree%ndummys,inputParams%nsnp))
+        allocate(ProbImputePhaseHmm(pedigree%pedigreeSize-pedigree%ndummys,inputParams%nsnp,2))
         ! Initialise probabilities to 0
         ProbImputeGenosHmm=0.0
         ProbImputePhaseHmm=0.0
@@ -222,7 +216,7 @@ CONTAINS
             !$OMP PARALLEL DO DEFAULT(shared) &
             !$OMP SCHEDULE(DYNAMIC)
             do i=1,nIndHmmMaCH
-                call MaCHForInd(i, HMM)
+                call MaCHForInd(pedigree%genotypeMap(i), HMM)
             enddo
             !$OMP END PARALLEL DO
 
