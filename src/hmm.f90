@@ -123,7 +123,7 @@ CONTAINS
 
         allocate(ErrorUncertainty(inputParams%nsnp))
         allocate(ErrorMatches(inputParams%nsnp))
-        allocate(ErrorMismatches(inputParams%nsnp))
+        allocate(Errormismatches(inputParams%nsnp))
 
         ! Crossover parameter in order to maximize the investigation of
         ! different mosaic configurations
@@ -1045,7 +1045,7 @@ CONTAINS
     !######################################################################
     subroutine ImputeAlleles(CurrentInd,CurrentMarker,State1,State2)
         ! Impute alleles to haplotypes based on the HMM information. Count the
-        ! number of uncertainties, matches and mismatches of the imputed
+        ! number of uncertainties, matches and mmatches of the imputed
         ! alleles according to the genotype information that the individual
         ! carries.
 
@@ -1093,7 +1093,7 @@ CONTAINS
             ErrorMatches(CurrentMarker)=ErrorMatches(CurrentMarker)+(2-Differences)
             ! count the number of mismatching alleles
             !$OMP ATOMIC
-            ErrorMismatches(CurrentMarker)=ErrorMismatches(CurrentMarker)+Differences
+            Errormismatches(CurrentMarker)=Errormismatches(CurrentMarker)+Differences
         endif
 
         ! If gentoype is homozygous or missing, the skip
@@ -1543,7 +1543,7 @@ CONTAINS
 
         ErrorUncertainty(:)=0
         ErrorMatches(:)=0
-        ErrorMismatches(:)=0
+        Errormismatches(:)=0
         Crossovers(:)=0
     end subroutine SetUpEquations
 
@@ -1874,26 +1874,27 @@ CONTAINS
         double precision,intent(out) :: rate
 
         ! Local variables
-        integer :: i,matches=0,mismatches=0,uncertain=0
+        integer :: i,matches=0,mmatches,uncertain=0
           type(AlphaHmmInput), pointer :: inputParams
         inputParams => defaultInput
 
+        mmatches = 0
         rate=0.0
         do i=1,inputParams%nsnp
-            if (ErrorMismatches(i)<=2) then
+            if (Errormismatches(i)<=2) then
                 matches=matches+ErrorMatches(i)
-                mismatches=mismatches+ErrorMismatches(i)
+                mmatches=mmatches+Errormismatches(i)
                 uncertain=uncertain+ErrorUncertainty(i)
             else
-                call UpdateError(ErrorMatches(i), ErrorMismatches(i), ErrorUncertainty(i), rate)
+                call UpdateError(ErrorMatches(i), Errormismatches(i), ErrorUncertainty(i), rate)
                 call SetPenetrance(i,rate)
             endif
         enddo
 
-        call UpdateError(matches, mismatches, uncertain, rate)
+        call UpdateError(matches, mmatches, uncertain, rate)
 
         do i=1,inputParams%nsnp
-            if (ErrorMismatches(i)<=2) call SetPenetrance(i, rate)
+            if (Errormismatches(i)<=2) call SetPenetrance(i, rate)
         enddo
 
     end subroutine UpdateErrorRate
@@ -1955,26 +1956,26 @@ CONTAINS
     end subroutine ResetCrossovers
 
     !######################################################################
-    subroutine UpdateError(matches, mismatches, uncertain, rate)
+    subroutine UpdateError(matches,mmatches, uncertain, rate)
 
             use GlobalVariablesHmmMaCH
         implicit none
 
-        integer,intent(in) :: matches,mismatches,uncertain
+        integer,intent(in) :: matches,mmatches,uncertain
         double precision, intent(out) :: rate
 
         ! Local variables
         double precision :: previous=0.0, ratio
 
         rate=0.0    ! Just in case...
-        if (matches+mismatches>0) then
-            rate=mismatches/dble(matches+mismatches)
+        if (matches+mmatches>0) then
+            rate=mmatches/dble(matches+mmatches)
             if (uncertain>0) then
                 do while((rate>1e-10).and.(abs(rate-previous) > rate*1e-4))
                     ratio=rate*rate/(rate*rate+(1.0-rate)*(1.0-rate))
                     previous=rate
-                    rate=(mismatches+ratio*uncertain*2.0)&
-                        /(matches+mismatches+uncertain*2)
+                    rate=(mmatches+ratio*uncertain*2.0)&
+                        /(matches+mmatches+uncertain*2)
                 enddo
             endif
         else if (uncertain>0) then
@@ -1985,13 +1986,13 @@ CONTAINS
 
     !######################################################################
     subroutine ResetErrors
-        use GlobalVariablesHmmMaCH, only : ErrorUncertainty, ErrorMismatches,ErrorMatches
+        use GlobalVariablesHmmMaCH, only : ErrorUncertainty, Errormismatches,ErrorMatches
 
         implicit none
 
         ErrorUncertainty(:)=0
         ErrorMatches(:)=0
-        ErrorMismatches(:)=0
+        Errormismatches(:)=0
 
     end subroutine ResetErrors
 
@@ -2311,7 +2312,7 @@ CONTAINS
         ErrorMatches(CurrentMarker)=ErrorMatches(CurrentMarker)+(2-Differences)
         ! count the number of mismatching alleles
         !$OMP ATOMIC
-        ErrorMismatches(CurrentMarker)=ErrorMismatches(CurrentMarker)+Differences
+        Errormismatches(CurrentMarker)=Errormismatches(CurrentMarker)+Differences
 
     end subroutine ImputeAllelesNGS
 
