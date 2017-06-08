@@ -216,7 +216,7 @@ CONTAINS
             !$OMP PARALLEL DO DEFAULT(shared) &
             !$OMP SCHEDULE(DYNAMIC)
             do i=1,nIndHmmMaCH
-                call MaCHForInd(pedigree%genotypeMap(i), HMM)
+                call MaCHForInd(i, HMM)
             enddo
             !$OMP END PARALLEL DO
 
@@ -261,6 +261,7 @@ CONTAINS
 
         inputParams => defaultInput
 
+        print *,"DEBUG", nGenotyped,nInbred
         allocate(GlobalInbredInd(nGenotyped+nInbred))
         GlobalInbredInd=.FALSE.
 
@@ -488,45 +489,42 @@ CONTAINS
         ! end do
 
         do i=1,nGenotyped
-            ! Check if individual is in the genotype file
-            if (pedigree%pedigree(pedigree%genotypeMap(i))%isGenotyped() == .TRUE.) then
-                ! k=k+1
-                nIndvG=nIndvG+1
-                k=i
-                ! GlobalHmmID(k)=i
+            nIndvG=nIndvG+1
+            k=i
+            ! GlobalHmmID(k)=i
 
-                ! Add animal's diploid to the Diploids Library
-                GenosHmmMaCH(k,:)=imputeGenosHMM(i,:)
+            ! Add animal's diploid to the Diploids Library
+            GenosHmmMaCH(k,:)=imputeGenosHMM(pedigree%genotypeMap(i),:)
 
-                ! Take the phased information from AlphaImpute
-                PhaseHmmMaCH(k,:,1)=imputePhaseHmm(i,:,1)
-                PhaseHmmMaCH(k,:,2)=imputePhaseHmm(i,:,2)
+            ! Take the phased information from AlphaImpute
+            PhaseHmmMaCH(k,:,1)=imputePhaseHmm(pedigree%genotypeMap(i),:,1)
+            PhaseHmmMaCH(k,:,2)=imputePhaseHmm(pedigree%genotypeMap(i),:,2)
 
-                ! Check if this animal is Highly Dense genotyped
-                if ((float(count(GenosHmmMaCH(k,:)==MISSING))/inputParams%nsnp)<0.10) then
-                    GlobalHmmHDInd(k)=1
-                endif
-
-                ! Clean the genotypes and alleles from possible coding errors
-                do j=1,inputParams%nsnp
-                    if ((GenosHmmMaCH(k,j)<0).or.(GenosHmmMaCH(k,j)>2)) GenosHmmMaCH(k,j)=MISSING
-                    if ((PhaseHmmMaCH(k,j,1)/=0) .AND. (PhaseHmmMaCH(k,j,1)/=1)) PhaseHmmMaCH(k,j,1)=ALLELE_MISSING
-                    if ((PhaseHmmMaCH(k,j,2)/=0) .AND. (PhaseHmmMaCH(k,j,2)/=1)) PhaseHmmMaCH(k,j,2)=ALLELE_MISSING
-                enddo
-
-                ! Check if this individual has its haplotypes phased
-                if (float(count(PhaseHmmMaCH(k,:,1)/=ALLELE_MISSING))/inputParams%nsnp >= (imputedThreshold/100.0)) Then
-                    GlobalHmmPhasedInd(k,1)=.TRUE.
-                endif
-                if (float(count(PhaseHmmMaCH(k,:,2)/=ALLELE_MISSING))/inputParams%nsnp >= (imputedThreshold/100.0)) Then
-                    GlobalHmmPhasedInd(k,2)=.TRUE.
-                endif
-
-                ! Count the number of phased animals
-                if ((GlobalHmmPhasedInd(k,1)==.TRUE.).AND.(GlobalHmmPhasedInd(k,2)==.TRUE.)) Then
-                    nAnimPhased=nAnimPhased+1
-                endif
+            ! Check if this animal is Highly Dense genotyped
+            if ((float(count(GenosHmmMaCH(k,:)==MISSING))/inputParams%nsnp)<0.10) then
+                GlobalHmmHDInd(k)=1
             endif
+
+            ! Clean the genotypes and alleles from possible coding errors
+            do j=1,inputParams%nsnp
+                if ((GenosHmmMaCH(k,j)<0).or.(GenosHmmMaCH(k,j)>2)) GenosHmmMaCH(k,j)=MISSING
+                if ((PhaseHmmMaCH(k,j,1)/=0) .AND. (PhaseHmmMaCH(k,j,1)/=1)) PhaseHmmMaCH(k,j,1)=ALLELE_MISSING
+                if ((PhaseHmmMaCH(k,j,2)/=0) .AND. (PhaseHmmMaCH(k,j,2)/=1)) PhaseHmmMaCH(k,j,2)=ALLELE_MISSING
+            enddo
+
+            ! Check if this individual has its haplotypes phased
+            if (float(count(PhaseHmmMaCH(k,:,1)/=ALLELE_MISSING))/inputParams%nsnp >= (imputedThreshold/100.0)) Then
+                GlobalHmmPhasedInd(k,1)=.TRUE.
+            endif
+            if (float(count(PhaseHmmMaCH(k,:,2)/=ALLELE_MISSING))/inputParams%nsnp >= (imputedThreshold/100.0)) Then
+                GlobalHmmPhasedInd(k,2)=.TRUE.
+            endif
+
+            ! Count the number of phased animals
+            if ((GlobalHmmPhasedInd(k,1)==.TRUE.).AND.(GlobalHmmPhasedInd(k,2)==.TRUE.)) Then
+                nAnimPhased=nAnimPhased+1
+            endif
+            
         end do
 
         close(NoGenosUnit)
@@ -2134,30 +2132,34 @@ CONTAINS
 #endif
         ! While the maximum number of haps in the template haplotypes set,
         ! H, is not reached...
-        do while (HapCount<inputParams%nhapinsubh)
-            if (mod(HapCount,2)==0) then
-                ShuffleInd1=ShuffleInd1+1
+do while (HapCount<inputParams%nhapinsubh)
+if (mod(HapCount,2)==0) then
+    ShuffleInd1=ShuffleInd1+1
 
-                ! Select the paternal haplotype if the individual it belongs
-                ! to is genotyped and it is not the current individual
-                if ((Shuffle1(ShuffleInd1)/=CurrentInd).and.&
-                    (GlobalHmmPhasedInd(Shuffle1(ShuffleInd1),1)==.TRUE.)) then
+    ! Select the paternal haplotype if the individual it belongs
+    ! to is genotyped and it is not the current individual
+    if (Shuffle1(ShuffleInd1)/=CurrentInd) then
+        
+        if (GlobalHmmPhasedInd(Shuffle1(ShuffleInd1),1)==.TRUE.) then
 
-                    HapCount=HapCount+1
-                    SubH(HapCount,:)=FullH(Shuffle1(ShuffleInd1),:,1)
-                endif
-            else
-                ShuffleInd2=ShuffleInd2+1
+            HapCount=HapCount+1
+            SubH(HapCount,:)=FullH(Shuffle1(ShuffleInd1),:,1)
+        endif
+    endif
+else
+    ShuffleInd2=ShuffleInd2+1
 
-                ! Select the maternal haplotype if the individual it belongs
-                ! too is genotyped and it is not the current individual
-                if ((Shuffle2(ShuffleInd2)/=CurrentInd).and.&
-                    (GlobalHmmPhasedInd(Shuffle2(ShuffleInd2),2)==.TRUE.)) then
-                    HapCount=HapCount+1
-                    SubH(HapCount,:)=FullH(Shuffle2(ShuffleInd2),:,2)
-                endif
-            endif
-        enddo
+    ! Select the maternal haplotype if the individual it belongs
+    ! too is genotyped and it is not the current individual
+    if (Shuffle2(ShuffleInd2)/=CurrentInd) then
+        
+        if (GlobalHmmPhasedInd(Shuffle2(ShuffleInd2),2)==.TRUE.) then
+            HapCount=HapCount+1
+            SubH(HapCount,:)=FullH(Shuffle2(ShuffleInd2),:,2)
+        endif
+    endif
+endif
+enddo
 
     end subroutine ExtractTemplateByHaps
 

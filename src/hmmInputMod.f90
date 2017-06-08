@@ -139,7 +139,7 @@ contains
             !     call ReadPlink(inputParams%genotypeFileUnit)
             ! end if
         else
-            call ped%addSequenceFromFile(inputparams%GenotypeFile, inputParams%nsnpRaw)
+            call pedigree%addSequenceFromFile(inputparams%GenotypeFile, inputParams%nsnpRaw)
         endif
 
         close(inputParams%genotypeFileUnit)

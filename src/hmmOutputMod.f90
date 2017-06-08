@@ -94,7 +94,7 @@ contains
         end if
 
         do i = 1, nAnisG
-            ! write (,'(a20,240000i0)') ped%pedigree(hmmID)%originalID,ImputeGenos(i,:)
+            ! write (,'(a20,240000i0)') pedigree%pedigree(hmmID)%originalID,ImputeGenos(i,:)
         end do
 
         close(GenosFileUnit)
@@ -133,7 +133,7 @@ contains
         end if
 
         do i = 1, nAnisG
-            ! write (,'(a20,240000i0)') ped%pedigree(hmmID)%originalID,ImputeGenos(i,:)
+            ! write (,'(a20,240000i0)') pedigree%pedigree(hmmID)%originalID,ImputeGenos(i,:)
         end do
 
         close(DosageFileUnit)
@@ -172,8 +172,8 @@ contains
         end if
 
         do i = 1, nAnisG
-            ! write (,'(a20,240000i0)') ped%pedigree(hmmID)%originalID,ImputeGenos(i,:)
-            ! write (,'(a20,240000i0)') ped%pedigree(hmmID)%originalID,ImputeGenos(i,:)
+            ! write (,'(a20,240000i0)') pedigree%pedigree(hmmID)%originalID,ImputeGenos(i,:)
+            ! write (,'(a20,240000i0)') pedigree%pedigree(hmmID)%originalID,ImputeGenos(i,:)
         end do
 
         close(ProbsFileUnit)
