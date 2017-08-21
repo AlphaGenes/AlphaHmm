@@ -261,7 +261,6 @@ CONTAINS
 
         inputParams => defaultInput
 
-        print *,"DEBUG", nGenotyped,nInbred
         allocate(GlobalInbredInd(nGenotyped+nInbred))
         GlobalInbredInd=.FALSE.
 
