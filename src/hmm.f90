@@ -2082,8 +2082,12 @@ CONTAINS
         ! H, is not reached...
         do while (HapCount<inputParams%nhapinsubh)
             if (mod(HapCount,2)==0) then
+            
                 ShuffleInd1=ShuffleInd1+1
-
+                if (ShuffleInd1 > nIndHmmMaCH) then
+                    write(error_unit,*) "WARNING: not enough haplotypes added as there are too few hd amimals"
+                    exit
+                endif 
                 ! Select the paternal haplotype if the individual it belongs
                 ! to is genotyped and it is not the current individual
                 if ((Shuffle1(ShuffleInd1)/=CurrentInd)&
@@ -2093,7 +2097,10 @@ CONTAINS
                 endif
             else
                 ShuffleInd2=ShuffleInd2+1
-
+                if (ShuffleInd2 > nIndHmmMaCH) then
+                    write(error_unit,*) "WARNING: not enough haplotypes added as there are too few hd amimals"
+                    exit
+                endif
                 ! Select the maternal haplotype if the individual it belongs
                 ! too is genotyped and it is not the current individual
                 if ((Shuffle2(ShuffleInd2)/=CurrentInd)&
