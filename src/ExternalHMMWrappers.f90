@@ -1,3 +1,27 @@
+!-----------------------------------------------------------------------------------------------------------------------
+! The Roslin Institute, The University of Edinburgh - AlphaGenes Group
+!-----------------------------------------------------------------------------------------------------------------------
+!
+! MODULE:       ExternalHMMWrappers
+!
+!> @file        ExternalHMMWrappers.f90
+!
+! DESCRIPTION:
+!> @brief       Module holding a wrapper for the HMM in AlphaImpute
+
+!>
+!> @details     This file contains a wrapper to translate the data structure from AlphaImpute into that of the HMM
+!
+!> @author      David Wilson, david.wilson@roslin.ed.ac.uk
+!
+!> @date        Oct 1, 2017
+!
+!> @version     0.0.1 (alpha)
+!
+! REVISION HISTORY:
+! 2017.10.01  Dwilson - Initial Version
+!
+!-----------------------------------------------------------------------------------------------------------------------
 module ExternalHMMWrappers
 
 
@@ -21,7 +45,7 @@ module ExternalHMMWrappers
         integer(kind=1),allocatable,dimension(:,:,:), intent(out) :: fullHOut !< full phase and imputation information from HMM (nanis, snps, haps[2])
 
         imputeGenosHMM = ped%getGenotypesAsArray()
-        imputePhaseHmm = ped%getPhaseAsArray()
+        imputePhaseHMM = ped%getPhaseAsArray()
         pedigree => ped
 
         defaultInput = inputParams
