@@ -94,8 +94,8 @@ CONTAINS
 
         ! Allocate a matrix to store probabilities of genotypes and
         ! alleles for each animal
-        allocate(ProbImputeGenosHmm(pedigree%pedigreeSize-pedigree%ndummys,inputParams%nsnp))
-        allocate(ProbImputePhaseHmm(pedigree%pedigreeSize-pedigree%ndummys,inputParams%nsnp,2))
+        allocate(ProbImputeGenosHmm(nIndHmmMaCH,inputParams%nsnp))
+        allocate(ProbImputePhaseHmm(nIndHmmMaCH,inputParams%nsnp,2))
         ! Initialise probabilities to 0
         ProbImputeGenosHmm=0.0
         ProbImputePhaseHmm=0.0
@@ -206,20 +206,21 @@ CONTAINS
             call flush(6)
 
             call ResetCrossovers
-
             ! Parallelise the HMM process in animals
 #if DEBUG.EQ.1
             t1 = omp_get_wtime()
             write(0,*) 'DEBUG: Begin paralellisation [MaCHController]'
 #endif
-
             !$OMP PARALLEL DO DEFAULT(shared) &
-            !$OMP SCHEDULE(DYNAMIC)
+            !$OMP PRIVATE(i) &
+            !$OMP SCHEDULE(static)
             do i=1,nIndHmmMaCH
+                ! print *,"i:",i,nIndHmmMaCH
                 call MaCHForInd(i, HMM)
+                ! print *,"after"               
             enddo
             !$OMP END PARALLEL DO
-
+            
 #if DEBUG.EQ.1
             t2 = omp_get_wtime()
             tT = tT + (t2-t1)
@@ -230,6 +231,7 @@ CONTAINS
 
             ! Update emission probabilities of the HMM process
             call UpdateThetas
+
             ! Update transition probabilities of the HMM process
             call UpdateErrorRate(Theta)
         enddo
@@ -426,7 +428,7 @@ CONTAINS
             ! Find individuals sequenced with high coverage
             ! if ((float(count(reads(i,:)/=READ_MISSING))/inputParams%nSnp)>0.90) then
 
-            if ((float(count(pedigree%pedigree(i)%ReferAllele(:) + pedigree%pedigree(i)%AlterAllele(:)/=READ_MISSING))/inputParams%nSnp)>0.90) then
+            if ((float(count(pedigree%pedigree(pedigree%genotypeMap(i))%ReferAllele(:) + pedigree%pedigree(pedigree%genotypeMap(i))%AlterAllele(:)/=READ_MISSING))/inputParams%nSnp)>0.90) then
                 ! WARNING: If this variable only stores 1 and 0, then its
                 !          type should logical: GlobalHmmHDInd=.true.
                 GlobalHmmHDInd(i)=1
@@ -601,7 +603,7 @@ CONTAINS
                 call SampleChromosomes(CurrentInd,StartSnp,StopSnp)
             end if
         else
-            if (nGametesPhased/float(2*pedigree%pedigreeSize)>inputParams%phasedThreshold/100.0) then
+            if (nGametesPhased/float(2*pedigree%nGenotyped)>inputParams%phasedThreshold/100.0) then
                 if (GlobalHmmPhasedInd(CurrentInd,1)/=.TRUE. .AND. GlobalHmmPhasedInd(CurrentInd,2)/=.TRUE.) Then
                     allocate(ForwardProbs(states,inputParams%nsnp))
                     call ForwardAlgorithm(CurrentInd)
@@ -1379,8 +1381,8 @@ CONTAINS
     ! NOTE: gentoype can be refer either to genotypes or reads if working with sequence data (NGS)
         ! GlobalInbredInd(CurrentInd)==.TRUE.
         if (defaultInput%HMMOption==RUN_HMM_NGS .AND. GlobalInbredInd(CurrentInd)==.FALSE.) then
-            RefAll = pedigree%pedigree(currentInd)%ReferAllele(Marker)
-            AltAll = pedigree%pedigree(currentInd)%AlterAllele(Marker)
+            RefAll = pedigree%pedigree(pedigree%genotypeMap(currentInd))%ReferAllele(Marker)
+            AltAll = pedigree%pedigree(pedigree%genotypeMap(currentInd))%AlterAllele(Marker)
         else
             genotypeInt = GenosHmmMaCH(CurrentInd,Marker)
             if (genotypeInt==MISSING) then
@@ -1573,7 +1575,7 @@ CONTAINS
         inputParams => defaultInput
         ! If the number of phased gametes from AlphaImpute is above a threshold, then
         ! haploytpes produced from AlphaImpute are used in the model (FullH)
-        if (nGametesPhased/float(2*pedigree%pedigreeSize)>phasedThreshold/100.0) then
+        if (nGametesPhased/float(2*pedigree%nGenotyped)>phasedThreshold/100.0) then
             do i=1,nGenotyped
                 FullH(i,:,:)=PhaseHmmMaCH(i,:,:)
 
@@ -2039,7 +2041,7 @@ CONTAINS
         if (HMM==RUN_HMM_ONLY) then
             call ExtractTemplateHaps(forWhom,Shuffle1,Shuffle2)
         else
-            if (nGametesPhased/float(2*pedigree%pedigreeSize)>phasedThreshold/100.0) then
+            if (nGametesPhased/float(2*pedigree%nGenotyped)>phasedThreshold/100.0) then
                 ! If the number of phased gametes with AlphaImpute is above
                 ! a threshold, then template is populated with the phased data
                 call ExtractTemplateByHaps(forWhom,Shuffle1,Shuffle2)
@@ -2254,8 +2256,8 @@ enddo
         copied1 = SubH(State1,CurrentMarker)
         copied2 = SubH(State2,CurrentMarker)
 
-        RefAll = pedigree%pedigree(currentInd)%ReferAllele(CurrentMarker)
-        AltAll = pedigree%pedigree(currentInd)%AlterAllele(CurrentMarker)
+        RefAll = pedigree%pedigree(pedigree%genotypeMap(currentInd))%ReferAllele(CurrentMarker)
+        AltAll = pedigree%pedigree(pedigree%genotypeMap(currentInd))%AlterAllele(CurrentMarker)
 
         posterior_11 = Penetrance(CurrentMarker,copied1+copied2,0)*shotgunErrorMatrix(0,RefAll,AltAll)
         posterior_12 = Penetrance(CurrentMarker,copied1+copied2,1)*shotgunErrorMatrix(1,RefAll,AltAll)
