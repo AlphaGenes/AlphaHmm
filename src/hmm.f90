@@ -462,7 +462,7 @@ CONTAINS
         type(AlphaHmmInput), pointer :: inputParams
         integer, intent(in) :: nGenotyped
 
-        integer :: i,j,k, NoGenosUnit, nIndvG
+        integer :: i,j, NoGenosUnit, nIndvG
 
         inputParams => defaultInput
 #ifdef DEBUG
@@ -473,7 +473,7 @@ CONTAINS
         open(unit=NoGenosUnit, file='Miscellaneous/NotGenotypedAnimals.txt', status="replace")
 
         GlobalHmmPhasedInd=.FALSE.
-        k=0
+        i=0
         nIndvG=0
         ! Read both the phased information of AlphaImpute and high-denisty genotypes,
         ! store it in PhaseHmmMaCH and GenosHmmMaCH, and keep track of  which
@@ -489,44 +489,48 @@ CONTAINS
 
         do i=1,nGenotyped
             nIndvG=nIndvG+1
-            k=i
-            ! GlobalHmmID(k)=i
 
             ! Add animal's diploid to the Diploids Library
-            GenosHmmMaCH(k,:)=imputeGenosHMM(pedigree%genotypeMap(i),:)
+            GenosHmmMaCH(i,:)=imputeGenosHMM(i,:)
 
             ! Take the phased information from AlphaImpute
-            PhaseHmmMaCH(k,:,1)=imputePhaseHmm(pedigree%genotypeMap(i),:,1)
-            PhaseHmmMaCH(k,:,2)=imputePhaseHmm(pedigree%genotypeMap(i),:,2)
+            PhaseHmmMaCH(i,:,1)=imputePhaseHmm(i,:,1)
+            PhaseHmmMaCH(i,:,2)=imputePhaseHmm(i,:,2)
 
             ! Check if this animal is Highly Dense genotyped
-            if ((float(count(GenosHmmMaCH(k,:)==MISSING))/inputParams%nsnp)<0.10) then
-                GlobalHmmHDInd(k)=1
+            if ((float(count(GenosHmmMaCH(i,:)==MISSING))/inputParams%nsnp)<0.10) then
+                GlobalHmmHDInd(i)=1
             endif
 
             ! Clean the genotypes and alleles from possible coding errors
             do j=1,inputParams%nsnp
-                if ((GenosHmmMaCH(k,j)<0).or.(GenosHmmMaCH(k,j)>2)) GenosHmmMaCH(k,j)=MISSING
-                if ((PhaseHmmMaCH(k,j,1)/=0) .AND. (PhaseHmmMaCH(k,j,1)/=1)) PhaseHmmMaCH(k,j,1)=ALLELE_MISSING
-                if ((PhaseHmmMaCH(k,j,2)/=0) .AND. (PhaseHmmMaCH(k,j,2)/=1)) PhaseHmmMaCH(k,j,2)=ALLELE_MISSING
+                if ((GenosHmmMaCH(i,j)<0).or.(GenosHmmMaCH(i,j)>2)) GenosHmmMaCH(i,j)=MISSING
+                if ((PhaseHmmMaCH(i,j,1)/=0) .AND. (PhaseHmmMaCH(i,j,1)/=1)) PhaseHmmMaCH(i,j,1)=ALLELE_MISSING
+                if ((PhaseHmmMaCH(i,j,2)/=0) .AND. (PhaseHmmMaCH(i,j,2)/=1)) PhaseHmmMaCH(i,j,2)=ALLELE_MISSING
             enddo
 
             ! Check if this individual has its haplotypes phased
-            if (float(count(PhaseHmmMaCH(k,:,1)/=ALLELE_MISSING))/inputParams%nsnp >= (imputedThreshold/100.0)) Then
-                GlobalHmmPhasedInd(k,1)=.TRUE.
+            if (float(count(PhaseHmmMaCH(i,:,1)/=ALLELE_MISSING))/inputParams%nsnp >= (imputedThreshold/100.0)) Then
+                GlobalHmmPhasedInd(i,1)=.TRUE.
             endif
-            if (float(count(PhaseHmmMaCH(k,:,2)/=ALLELE_MISSING))/inputParams%nsnp >= (imputedThreshold/100.0)) Then
-                GlobalHmmPhasedInd(k,2)=.TRUE.
+            if (float(count(PhaseHmmMaCH(i,:,2)/=ALLELE_MISSING))/inputParams%nsnp >= (imputedThreshold/100.0)) Then
+                GlobalHmmPhasedInd(i,2)=.TRUE.
             endif
 
             ! Count the number of phased animals
-            if ((GlobalHmmPhasedInd(k,1)==.TRUE.).AND.(GlobalHmmPhasedInd(k,2)==.TRUE.)) Then
+            if ((GlobalHmmPhasedInd(i,1)==.TRUE.).AND.(GlobalHmmPhasedInd(i,2)==.TRUE.)) Then
                 nAnimPhased=nAnimPhased+1
             endif
-            
+
         end do
 
+
+
         close(NoGenosUnit)
+        print *, sum(GlobalHmmHDInd)
+
+
+
 
         ! Count the number of phased gametes
         nGametesPhased = 0
