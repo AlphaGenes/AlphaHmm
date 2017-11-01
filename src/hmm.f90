@@ -218,10 +218,10 @@ CONTAINS
             do i=1,nIndHmmMaCH
                 ! print *,"i:",i,nIndHmmMaCH
                 call MaCHForInd(i, HMM)
-                ! print *,"after"               
+                ! print *,"after"
             enddo
             !$OMP END PARALLEL DO
-            
+
 #if DEBUG.EQ.1
             t2 = omp_get_wtime()
             tT = tT + (t2-t1)
@@ -592,7 +592,6 @@ CONTAINS
         StartSnp=1
         StopSnp=inputParams%nsnp
         if (HMM==RUN_HMM_ONLY .OR. HMM==RUN_HMM_NGS) then
-
             if (GlobalInbredInd(CurrentInd)==.TRUE.) then
                 allocate(ForwardProbs(inputParams%nhapinsubh,inputParams%nsnp))
                 call ForwardAlgorithmForSegmentHaplotype(CurrentInd,1,1,inputParams%nsnp)     ! Paternal haplotype
@@ -1927,14 +1926,14 @@ CONTAINS
         use GlobalVariablesHmmMaCH, only : crossovers
         use AlphaHmmInMod
         implicit none
-        
+
 
         integer,intent(out) :: Total
         type(AlphaHmmInput), pointer :: inputParams
          integer :: i
         inputParams => defaultInput
         ! Local variables
-       
+
 
         Total=0
         do i=1,inputParams%nsnp-1
@@ -2089,12 +2088,12 @@ CONTAINS
         ! H, is not reached...
         do while (HapCount<inputParams%nhapinsubh)
             if (mod(HapCount,2)==0) then
-            
+
                 ShuffleInd1=ShuffleInd1+1
                 if (ShuffleInd1 > nIndHmmMaCH) then
                     write(error_unit,*) "WARNING: not enough haplotypes added as there are too few hd amimals"
                     exit
-                endif 
+                endif
                 ! Select the paternal haplotype if the individual it belongs
                 ! to is genotyped and it is not the current individual
                 if ((Shuffle1(ShuffleInd1)/=CurrentInd)&
@@ -2152,7 +2151,7 @@ if (mod(HapCount,2)==0) then
     ! Select the paternal haplotype if the individual it belongs
     ! to is genotyped and it is not the current individual
     if (Shuffle1(ShuffleInd1)/=CurrentInd) then
-        
+
         if (GlobalHmmPhasedInd(Shuffle1(ShuffleInd1),1)==.TRUE.) then
 
             HapCount=HapCount+1
@@ -2165,7 +2164,7 @@ else
     ! Select the maternal haplotype if the individual it belongs
     ! too is genotyped and it is not the current individual
     if (Shuffle2(ShuffleInd2)/=CurrentInd) then
-        
+
         if (GlobalHmmPhasedInd(Shuffle2(ShuffleInd2),2)==.TRUE.) then
             HapCount=HapCount+1
             SubH(HapCount,:)=FullH(Shuffle2(ShuffleInd2),:,2)
