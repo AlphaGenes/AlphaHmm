@@ -2227,7 +2227,7 @@ enddo
 
         ! Local variables
         double precision :: ProdFactTmp
-        double precision :: DFactorialInLog(0:MAX_READS_COUNT-1)
+        double precision :: DFactorialInLog(0:(MAX_READS_COUNT-1)**2)
         integer :: i,k
 
         do k=0,MAX_READS_COUNT-1
