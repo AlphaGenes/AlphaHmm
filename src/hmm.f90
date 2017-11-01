@@ -30,6 +30,7 @@ CONTAINS
 
     !######################################################################
     subroutine HMMController(HMM)
+        use ConstantModule
         use GlobalVariablesHmmMaCH
         use hmmParameters
 
@@ -2216,6 +2217,7 @@ enddo
 
     !######################################################################
     subroutine SetShotgunError(ErrorRate)
+        use ConstantModule
         use GlobalVariablesHmmMaCH
         use hmmParameters
 

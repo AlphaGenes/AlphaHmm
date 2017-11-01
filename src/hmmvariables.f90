@@ -7,7 +7,6 @@ module hmmPARAMETERS
     integer, parameter :: RUN_HMM_ONLY=3
     integer, parameter :: RUN_HMM_PREPHASE=4
     integer, parameter :: RUN_HMM_NGS=5
-    integer, parameter :: MAX_READS_COUNT=100 ! Maximum number of reads for reference and alternative alleles
 
 
 end module hmmPARAMETERS
