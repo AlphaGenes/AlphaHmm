@@ -404,8 +404,8 @@ CONTAINS
     !######################################################################
     subroutine ParseMaCHDataNGS(nGenotyped)
         use GlobalVariablesHmmMaCH
-
         use AlphaHmmInMod
+
         implicit none
         integer, intent(in) :: nGenotyped
         integer :: i, j, nHaps, HapsLeft
@@ -453,7 +453,6 @@ CONTAINS
 
     !######################################################################
     subroutine ParseMaCHDataGenos(nGenotyped)
-        ! subroutine ParseMaCHData
         use GlobalVariablesHmmMaCH
 
         use Utils
@@ -482,13 +481,6 @@ CONTAINS
         ! store it in PhaseHmmMaCH and GenosHmmMaCH, and keep track of  which
         ! gamete is phased (GlobalHmmPhasedInd) and the high-denisity
         ! genotyped animal (GlobalHmmHDInd)
-
-        !     do i = 1, pedigree%pedigreeSize
-        !         if (trim(Id(i)) == trim(GenotypeID(j))) then
-        !             GlobalHmmID(j) = i
-        !         end if
-        !     end do
-        ! end do
 
         do i=1,nGenotyped
             nIndvG=nIndvG+1
@@ -548,7 +540,6 @@ CONTAINS
             ! stop
         endif
 
-        ! end subroutine ParseMaCHData
     end subroutine ParseMaCHDataGenos
 
     !######################################################################
@@ -1042,7 +1033,7 @@ CONTAINS
     !######################################################################
     subroutine ImputeAlleles(CurrentInd,CurrentMarker,State1,State2)
         ! Impute alleles to haplotypes based on the HMM information. Count the
-        ! number of uncertainties, matches and mmatches of the imputed
+        ! number of uncertainties, matches and mismatches of the imputed
         ! alleles according to the genotype information that the individual
         ! carries.
 
@@ -1382,7 +1373,7 @@ CONTAINS
         ! We treat missing genotypes as uninformative about the mosaic's
         ! underlying state. If we were to allow for deletions and the like,
         ! that may no longer be true.
-    ! NOTE: gentoype can be refer either to genotypes or reads if working with sequence data (NGS)
+        ! NOTE: gentoype can be refer either to genotypes or reads if working with sequence data (NGS)
         ! GlobalInbredInd(CurrentInd)==.TRUE.
         if (defaultInput%HMMOption==RUN_HMM_NGS .AND. GlobalInbredInd(CurrentInd)==.FALSE.) then
             RefAll = pedigree%pedigree(pedigree%genotypeMap(currentInd))%ReferAllele(Marker)
@@ -1401,8 +1392,8 @@ CONTAINS
         if (inputParams%HMMOption==RUN_HMM_NGS) then
             do i=0,2
                 cond_probs(i)=Penetrance(Marker,i,0)*shotgunErrorMatrix(0,RefAll,AltAll)&
-                +Penetrance(Marker,i,1)*shotgunErrorMatrix(1,RefAll,AltAll)&
-                +Penetrance(Marker,i,2)*shotgunErrorMatrix(2,RefAll,AltAll)
+                             +Penetrance(Marker,i,1)*shotgunErrorMatrix(1,RefAll,AltAll)&
+                             +Penetrance(Marker,i,2)*shotgunErrorMatrix(2,RefAll,AltAll)
             enddo
         endif
 
