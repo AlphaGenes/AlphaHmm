@@ -2278,21 +2278,12 @@ enddo
             call GetErrorRatebyMarker(CurrentMarker, rate)
 
             if (par_uni(Thread) < rate*rate / ((rate*rate) + (1-rate)*(1-rate))) then
-                if (copied1 == 1) then
-                    copied1 = 0
-                else
-                    copied1 = 1
-                endif
-
-                if (copied2 == 1) then
-                    copied2 = 0
-                else
-                    copied2 = 1
-                endif
+                copied1 = 1 - copied1
+                copied2 = 1 - copied2
             endif
-
             FullH(CurrentInd,CurrentMarker,1) = copied1
             FullH(CurrentInd,CurrentMarker,2) = copied2
+
         else
             if (par_uni(Thread)<0.5) then
                 FullH(CurrentInd,CurrentMarker,1) = 0
