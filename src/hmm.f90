@@ -79,6 +79,10 @@ CONTAINS
         ! NOTE: GenosHmmMaCH can contain either genotype or reads information (if working with sequence data NGS)
         allocate(GenosHmmMaCH(nIndHmmMaCH,inputParams%nsnp))
         allocate(PhaseHmmMaCH(nIndHmmMaCH,inputParams%nsnp,2))
+
+        GenosHmmMaCH = MISSING
+        PhaseHmmMaCH = ALLELE_MISSING
+
         ! Allocate memory to store Animals contributing to the Template
         ! Haplotype Library
         allocate(GlobalHmmMachID(nIndHmmMaCH))
