@@ -523,13 +523,7 @@ CONTAINS
 
         end do
 
-
-
         close(NoGenosUnit)
-        print *, sum(GlobalHmmHDInd)
-
-
-
 
         ! Count the number of phased gametes
         nGametesPhased = 0
@@ -1747,7 +1741,9 @@ CONTAINS
                 posterior_22 = prior_22 * ShotgunErrorMatrix(2,RefAll,AltAll)
 
                 summ = posterior_11 + posterior_12 + posterior_22
-                if (summ==0) write(0,*) 'There is a problem here!'
+                if (summ==0) then
+                    write(0,*) 'There is a problem here!'
+                end if
 
                 posterior_11 = posterior_11 / summ
                 posterior_12 = posterior_12 / summ
