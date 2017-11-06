@@ -1373,9 +1373,14 @@ CONTAINS
         ! that may no longer be true.
         ! NOTE: gentoype can be refer either to genotypes or reads if working with sequence data (NGS)
         ! GlobalInbredInd(CurrentInd)==.TRUE.
-        if (defaultInput%HMMOption==RUN_HMM_NGS .AND. GlobalInbredInd(CurrentInd)==.FALSE.) then
+        ! if (defaultInput%HMMOption==RUN_HMM_NGS .AND. GlobalInbredInd(CurrentInd)==.FALSE.) then
+        if (defaultInput%HMMOption==RUN_HMM_NGS) then
             RefAll = pedigree%pedigree(pedigree%genotypeMap(currentInd))%ReferAllele(Marker)
             AltAll = pedigree%pedigree(pedigree%genotypeMap(currentInd))%AlterAllele(Marker)
+
+            if (RefAll + AltAll == 0) then
+                return
+            endif
         else
             genotypeInt = GenosHmmMaCH(CurrentInd,Marker)
             if (genotypeInt==MISSING) then
