@@ -1716,12 +1716,17 @@ CONTAINS
         integer, intent(in) :: nGenotyped
 
         integer :: i,j, alleles, readObs, RefAll, AltAll
+        integer :: PosteriorUnit = 1234
         double precision :: prior_11, prior_12, prior_22
         double precision :: posterior_11, posterior_12, posterior_22
         double precision :: r, frequency, summ
+        double precision, allocatable, dimension(:,:) :: PosteriorsDosages
         type(AlphaHmmInput), pointer :: inputParams
 
         inputParams => defaultInput
+
+        allocate(PosteriorsDosages(nGenotyped, inputParams%nsnp))
+
         !Initialise FullH
         do j=1,inputParams%nsnp      ! For each SNP
             readObs = 0
@@ -1753,6 +1758,8 @@ CONTAINS
                 posterior_11 = posterior_11 / summ
                 posterior_12 = posterior_12 / summ
                 posterior_22 = posterior_22 / summ
+
+                PosteriorsDosages(i,j) = posterior_12 + 2 * posterior_22
 
                 if (posterior_11 > 0.9999) then
                     GenosHmmMaCH(i,j) = 0
@@ -1801,6 +1808,13 @@ CONTAINS
                 end if
             enddo
         enddo
+
+        ! Print out Genotype dosage probabilities based on reads
+        open(unit=PosteriorUnit, file='Results/GenotypePosteriorProbabilities.txt', status='unknown')
+        do i=1, nGenotyped
+            write(PosteriorUnit,'(a20,240000f7.4)') pedigree%pedigree(pedigree%genotypeMap(i))%originalID, PosteriorsDosages(i,:)
+        end do
+        close(PosteriorUnit)
 
     end subroutine SetUpEquationsReads
 
