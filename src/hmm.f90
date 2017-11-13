@@ -642,15 +642,10 @@ CONTAINS
                 elseif (genotypeInt==1) then
                     GenosCounts(CurrentInd,i,1)=GenosCounts(CurrentInd,i,1)+1
                 endif
-                ! GenosCounts(CurrentInd,i,1)=(GlobalRoundHmm-inputParams%hmmburninround) - GenosCounts(CurrentInd,i,2) - GenosCounts(CurrentInd,i,3)
             enddo
             ! endif
 
             ! Cumulative genotype probabilities through hmm processes
-    ! #if DEBUG.EQ.1
-    !        write(0,*) 'DEBUG: Calculate genotype dosages [MaCHForInd]'
-    ! #endif
-            ! if (GlobalRoundHmm>inputParams%hmmburninround) then
             !$omp workshare
             ProbImputeGenosHmm(CurrentInd,:)=ProbImputeGenosHmm(CurrentInd,:)&
                 +FullH(CurrentInd,:,1)+FullH(CurrentInd,:,2)
@@ -990,9 +985,6 @@ CONTAINS
                 ! No recombinant in the first interval =>
                 !    => Recombinant in second interval
                 FromMarkerLocal=FromMarkerLocal+1
-                ! WARNING: Here was a bug. It there isn't recombination,
-                !          imputation has to be done in the FromState haplotype
-                !call ImputeAllele(CurrentInd,FromMarkerLocal,ToState,TopBot)
                 call ImputeAllele(CurrentInd,FromMarkerLocal,FromState,TopBot)
                 cycle
             endif
@@ -1010,11 +1002,6 @@ CONTAINS
                 ! Recombinants in both intervals, so we must sample
                 ! an intervening state
                 FromMarkerLocal=FromMarkerLocal+1
-
-                ! WARNING: Not really a bug, but not used a coherent notation
-                !ToState=int(ran1(inputParams%seed)*inputParams%nhapinsubh)+1
-                !call ImputeAllele(CurrentInd,FromMarkerLocal,ToState,TopBot)
-                !State=int(ran1(inputParams%seed)*inputParams%nhapinsubh)+1
                 State=int(par_uni(Thread)*inputParams%nhapinsubh)+1
 
                 call ImputeAllele(CurrentInd,FromMarkerLocal,State,TopBot)
@@ -1403,18 +1390,15 @@ CONTAINS
         do i=1, inputParams%nhapinsubh
             ! if (inputParams%HMMOption /= RUN_HMM_NGS .OR. GlobalInbredInd(CurrentInd)==.TRUE.) then
             if (inputParams%HMMOption /= RUN_HMM_NGS) then
-                ! Probability to observe genotype SubH(i) being the true
-                ! genotype GenosHmmMaCH in locus Marker
+                ! Probability to observe genotype SubH(i) being the true genotype GenosHmmMaCH in locus Marker
                 Factors(0) = Penetrance(Marker,SubH(i,Marker),genotypeInt)
                 ! Probability to observe genotype SubH(i)+1 being the true
                 ! genotype GenosHmmMaCH in locus Marker
                 Factors(1) = Penetrance(Marker,SubH(i,Marker)+1,genotypeInt)
             else
-                ! Probability to observe genotype SubH(i) being the true
-                ! genotype GenosHmmMaCH in locus Marker
+                ! Probability to observe genotype SubH(i) being the true genotype GenosHmmMaCH in locus Marker
                 Factors(0) = cond_probs(SubH(i,Marker))
-                ! Probability to observe genotype SubH(i)+1 being the true
-                ! genotype GenosHmmMaCH in locus Marker
+                ! Probability to observe genotype SubH(i)+1 being the true genotype GenosHmmMaCH in locus Marker
                 Factors(1) = cond_probs(SubH(i,Marker)+1)
             endif
 
@@ -1448,7 +1432,6 @@ CONTAINS
         ! allocate(Penetrance(inputParams%nsnp,0:2,0:2))
 
         nprocs = OMP_get_num_procs()
-        ! call OMP_set_num_threads(nprocs)
 
         !$OMP PARALLEL DO DEFAULT(SHARED)
         do j=1,inputParams%nsnp
@@ -1489,13 +1472,11 @@ CONTAINS
         ! Initially, every state is equally possible
         !ForwardProbs(:,1)=1.0/(inputParams%nhapinsubh*inputParams%nhapinsubh)
 
-        ! WARNING: I think this variable is treated in a wrong way. In MaCH
-        !          code, FordwardProbs is the array variable leftMatrices.
-        !          In there, every element of the array is another array with
-        !          s(s+1)/2 elements, as S(i,j)=S(j,i); where s=inputParams%nhapinsubh.
-        !          So the probability of each state is two times 1 divided by
-        !          the total number of possible states.
-        !          So the code should be:
+        ! NOTE: In MaCH code, FordwardProbs is the array variable leftMatrices.
+        !       In there, every element of the array is another array with
+        !       s(s+1)/2 elements, as S(i,j)=S(j,i); where s=inputParams%nhapinsubh.
+        !       So the probability of each state is two times 1 divided by
+        !       the total number of possible states.
 
         state=0
         do i=1,inputParams%nhapinsubh
@@ -1777,7 +1758,7 @@ CONTAINS
                     GenosHmmMaCH(i,j) = 2
                     FullH(i,j,:) = 1
                 else
-                    if ((pedigree%pedigree(pedigree%genotypeMap(i))%referAllele(j) +pedigree%pedigree(pedigree%genotypeMap(i))%alterAllele(j))  == 0) then
+                    if ((pedigree%pedigree(pedigree%genotypeMap(i))%referAllele(j) + pedigree%pedigree(pedigree%genotypeMap(i))%alterAllele(j))  == 0) then
                         GenosHmmMaCH(i,j) = MISSING
                     end if
                     if (r < posterior_11) then
@@ -1921,7 +1902,7 @@ CONTAINS
         Penetrance(marker,0,1)=2.0*(1.0-Err)*Err
         Penetrance(marker,0,2)=Err**2
         Penetrance(marker,1,0)=(1.0-Err)*Err
-    Penetrance(marker,1,1)=((1.0-Err)**2)+(Err**2)
+        Penetrance(marker,1,1)=((1.0-Err)**2)+(Err**2)
         Penetrance(marker,1,2)=(1.0-Err)*Err
         Penetrance(marker,2,0)=Err**2
         Penetrance(marker,2,1)=2.0*(1.0-Err)*Err
@@ -2154,34 +2135,34 @@ CONTAINS
 #endif
         ! While the maximum number of haps in the template haplotypes set,
         ! H, is not reached...
-do while (HapCount<inputParams%nhapinsubh)
-if (mod(HapCount,2)==0) then
-    ShuffleInd1=ShuffleInd1+1
+        do while (HapCount<inputParams%nhapinsubh)
+            if (mod(HapCount,2)==0) then
+                ShuffleInd1=ShuffleInd1+1
 
-    ! Select the paternal haplotype if the individual it belongs
-    ! to is genotyped and it is not the current individual
-    if (Shuffle1(ShuffleInd1)/=CurrentInd) then
+                ! Select the paternal haplotype if the individual it belongs
+                ! to is genotyped and it is not the current individual
+                if (Shuffle1(ShuffleInd1)/=CurrentInd) then
 
-        if (GlobalHmmPhasedInd(Shuffle1(ShuffleInd1),1)==.TRUE.) then
+                    if (GlobalHmmPhasedInd(Shuffle1(ShuffleInd1),1)==.TRUE.) then
 
-            HapCount=HapCount+1
-            SubH(HapCount,:)=FullH(Shuffle1(ShuffleInd1),:,1)
-        endif
-    endif
-else
-    ShuffleInd2=ShuffleInd2+1
+                        HapCount=HapCount+1
+                        SubH(HapCount,:)=FullH(Shuffle1(ShuffleInd1),:,1)
+                    endif
+                endif
+            else
+                ShuffleInd2=ShuffleInd2+1
 
-    ! Select the maternal haplotype if the individual it belongs
-    ! too is genotyped and it is not the current individual
-    if (Shuffle2(ShuffleInd2)/=CurrentInd) then
+                ! Select the maternal haplotype if the individual it belongs
+                ! too is genotyped and it is not the current individual
+                if (Shuffle2(ShuffleInd2)/=CurrentInd) then
 
-        if (GlobalHmmPhasedInd(Shuffle2(ShuffleInd2),2)==.TRUE.) then
-            HapCount=HapCount+1
-            SubH(HapCount,:)=FullH(Shuffle2(ShuffleInd2),:,2)
-        endif
-    endif
-endif
-enddo
+                    if (GlobalHmmPhasedInd(Shuffle2(ShuffleInd2),2)==.TRUE.) then
+                        HapCount=HapCount+1
+                        SubH(HapCount,:)=FullH(Shuffle2(ShuffleInd2),:,2)
+                    endif
+                endif
+            endif
+        enddo
 
     end subroutine ExtractTemplateByHaps
 
