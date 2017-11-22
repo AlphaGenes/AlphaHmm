@@ -45,6 +45,8 @@ module ExternalHMMWrappers
         integer(kind=1),allocatable,dimension(:,:,:), intent(out) :: fullHOut !< full phase and imputation information from HMM (nanis, snps, haps[2])
 
         imputeGenosHMM = ped%getGenotypesAsArray()
+
+        
         imputePhaseHMM = ped%getPhaseAsArray()
         pedigree => ped
 
