@@ -99,7 +99,7 @@ CONTAINS
 
         allocate(gamete(inputParams%nsnp))
         gametesPhased=0
-        do ind=1,pedigree%pedigreeSize-pedigree%ndummys
+        do ind=1,pedigree%nGenotyped
             gamete=imputePhaseHmm(ind,:,1)
             if (float(count(gamete(:)==1 .OR. gamete(:)==0))/inputParams%nsnp >= inputParams%imputedThreshold/100.0) then
                 gametesPhased=gametesPhased+1
