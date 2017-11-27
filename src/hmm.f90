@@ -1172,18 +1172,19 @@ CONTAINS
         integer :: j,PrecedingMarker
         type(AlphaHmmInput), pointer :: inputParams
         inputParams => defaultInput
-        ! Setup the initial state distributions
 
+        ! Setup the initial state distributions
         call SetUpPrior
 
-        j=1
-        ! CurrentInd is the individual being studied and it is necessary to
-        ! obtain the genotype of this individual in ConditionaOnData subroutine
-        ! For j=1, ConditionaOnData will initialize the variable
-        ! ForwardProbs(:,1) with the Prior Probabilities
+
 #if DEBUG.EQ.1
         write(0,*) 'DEBUG: Update forward variable with emission probabilities [ForwardAlgorithm]'
 #endif
+        ! CurrentInd is the individual being studied and it is necessary to
+        ! obtain the genotype of this individual in ConditionaOnData subroutine
+        ! For j=StartSnp, ConditionaOnData will initialize the variable
+        ! ForwardProbs(:,1) with the Prior Probabilities
+        j=StartSnp
         call ConditionOnData(CurrentInd,j)
 
         ! WARNING: This variable, Theta, should be considered as local as is
@@ -1192,14 +1193,12 @@ CONTAINS
         !          SamplePath
         Theta=0.0
 
-        ! PrecedingMarker=1
-        PrecedingMarker=StartSnp
 #if DEBUG.EQ.1
         write(0,*) 'DEBUG: Calculate Forward variables [ForwardAlgorithm]'
 #endif
 
-        ! do j=2,inputParams%nsnp
-        do j=2,StopSnp
+        PrecedingMarker=StartSnp
+        do j=StartSnp,StopSnp
             ! Cumulative recombination fraction allows us to skip uninformative positions
             Theta=Theta+Thetas(j-1)-Theta*Thetas(j-1)
             ! Skip over uninformative positions to save time
