@@ -1757,7 +1757,7 @@ CONTAINS
                     GenosHmmMaCH(i,j) = 2
                     FullH(i,j,:) = 1
                 else
-                    if ((pedigree%pedigree(pedigree%genotypeMap(i))%referAllele(j) + pedigree%pedigree(pedigree%genotypeMap(i))%alterAllele(j))  == 0) then
+                    if ((RefAll + AltAll)  == 0) then
                         GenosHmmMaCH(i,j) = MISSING
                     end if
                     if (r < posterior_11) then
