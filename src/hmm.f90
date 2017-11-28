@@ -431,7 +431,7 @@ CONTAINS
         do i=1,nGenotyped
             ! Add animal's diploid to the Diploids Library
             ! Find individuals sequenced with high coverage
-            ! if ((float(count(reads(i,:)/=READ_MISSING))/inputParams%nSnp)>0.90) then
+            ! TODO: Refactor this to make it more readable
 
             if ((float(count(pedigree%pedigree(pedigree%genotypeMap(i))%ReferAllele(:) + pedigree%pedigree(pedigree%genotypeMap(i))%AlterAllele(:)/=READ_MISSING))/inputParams%nSnp)>0.90) then
                 ! WARNING: If this variable only stores 1 and 0, then its
@@ -676,6 +676,7 @@ CONTAINS
 
         integer,intent(in) :: CurrentInd,StartSnp,StopSnp
         type(AlphaHmmInput), pointer :: inputParams
+
         ! Local variables
         integer :: i,j,k,l,SuperJ,Index,OffOn,State1,State2,TmpJ,TopBot,FirstState,SecondState,Tmp,Thread
         double precision :: Summer,Choice,Sum00,Sum01,Sum10,Sum11
@@ -701,7 +702,6 @@ CONTAINS
         enddo
 
         ! Sample number at random and select state: (State1,State2)
-        !Choice=ran1(inputParams%seed)*Summer
         Choice = par_uni(Thread)*Summer
         Summer=0.0
         Index=0
@@ -782,7 +782,6 @@ CONTAINS
 
             !Sample number and decide how many state changes occurred between the
             !two positions
-            !Choice=ran1(inputParams%seed)*Summer
             Choice = par_uni(Thread)*Summer
 
             !The most likely outcome is that no changes occur ...
@@ -808,8 +807,6 @@ CONTAINS
                 FirstState=State1
 
                 ! Sample number at random and decide haplotype
-                !        do while (State1<inputParams%nhapinsubh)
-                !            State1=State1+1
                 do State1=1,inputParams%nhapinsubh
                     if (State1>=State2) then
                         Choice=Choice+ForwardProbs(State1*(State1-1)/2+State2,SuperJ)
@@ -882,7 +879,6 @@ CONTAINS
             enddo
 
             ! Shuffle haplotypes at random
-            !if (ran1(inputParams%seed)>0.5) then
             if (par_uni(Thread)>0.5) then
                 Tmp=State1
                 State2=State1
@@ -962,7 +958,6 @@ CONTAINS
         ! Impute a path between the two end markers
         do while (FromMarkerLocal<ToMarker-1)
             ! Random recombination
-            !Recomb=ran1(inputParams%seed)*Theta
             Recomb = par_uni(Thread)*Theta
 
             ! Recombination fraction of the FromMarkerLocal
@@ -1075,12 +1070,9 @@ CONTAINS
         ! If the observed allele is homozygous but the genotype is heterozygous
         if (Imputed1==Imputed2) then
             ! Impute the allele to the paternal or maternal haplotype at random
-            !if (ran1(inputParams%seed)>=0.5) then
             if (par_uni(Thread)>=0.5) then
                 FullH(CurrentInd,CurrentMarker,1)=abs(Imputed1-1)
             else
-                ! WARNING: Bug fixed!
-                !          Imputation was done to the paternal haplotype also here
                 FullH(CurrentInd,CurrentMarker,2)=abs(Imputed2-1)
             endif
         endif
@@ -1113,7 +1105,7 @@ CONTAINS
 
         ! Local variables
         integer :: j,PrecedingMarker
-          type(AlphaHmmInput), pointer :: inputParams
+        type(AlphaHmmInput), pointer :: inputParams
         inputParams => defaultInput
 
         ! Setup the initial state distributions
@@ -1548,7 +1540,6 @@ CONTAINS
 
         integer :: i,j
         type(AlphaHmmInput), pointer :: inputParams
-        !Initialise FullH
 
         inputParams => defaultInput
         ! If the number of phased gametes from AlphaImpute is above a threshold, then
@@ -1588,8 +1579,6 @@ CONTAINS
 
             ! Overwrite haplotypes to use phased data in case phased haplotypes from
             ! AlphaImpute are available
-
-            ! if (nGametesPhased/float(2*pedigree%pedigreeSize)>phasedThreshold/100.0) then
 
             do i=1,nGenotyped      ! For every Individual in the Genotype file
                 if (GlobalHmmPhasedInd(i,1)==.TRUE.) then
