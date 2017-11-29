@@ -244,6 +244,16 @@ CONTAINS
 #ifdef DEBUG
         write(0,*) 'DEBUG: End paralellisation'
 #endif
+        BLOCK
+            integer :: hmmID
+
+            open (unit=1234,file="." // "/" // trim("Debugging") // "/"  // "Probabilities.txt",status="unknown")
+            do hmmID = 1, pedigree%nGenotyped
+                ! hmmID = ped%genotypeMap(i)
+                write (1234,'(a20,20000f5.2,20000f5.2,20000f5.2,20000f5.2,20000f5.2,20000f5.2,20000f5.2,20000f5.2,20000f5.2,20000f5.2,20000f5.2,20000f5.2)') pedigree%pedigree(hmmID)%originalID,ProbImputeGenosHmm(hmmID,:)
+            enddo
+            close(1234)
+        END BLOCK
 
         ! Average genotype probability of the different hmm processes
         ProbImputeGenosHmm=ProbImputeGenosHmm/(inputParams%nroundshmm-inputParams%hmmburninround)
@@ -306,6 +316,7 @@ CONTAINS
 
         integer :: i
 
+        print*, 'DEBUG: [ParseMaCHPhased]'
         do i = 1, nInbred
             GenosHmmMaCH(nGenotyped+i,:) = 2 * PhasedData(i,:)
             PhaseHmmMaCH(nGenotyped+i,:,1) = PhasedData(i,:)
@@ -314,6 +325,7 @@ CONTAINS
 
         GlobalInbredInd(nGenotyped+1 : nGenotyped+nInbred) = .TRUE.
         GlobalHmmHDInd(nGenotyped+1 : nGenotyped+nInbred) = 1
+
 
     end subroutine ParseMaCHPhased
 
@@ -336,6 +348,7 @@ CONTAINS
         type(AlphaHmmInput), pointer :: inputParams
         inputParams => defaultInput
 
+        print *, "DEBUG: [ReadInbred]"
         inquire(unit=PhaseFileUnit, opened=opened, named=named, name=InbredFile)
 
         if (.NOT. opened .and. named) then
@@ -418,9 +431,9 @@ CONTAINS
 
 
         inputParams => defaultInput
-#ifdef DEBUG
+! #ifdef DEBUG
         write(0,*) 'DEBUG: [ParseMaCHDataNGS]'
-#endif
+! #endif
 
         if (inputParams%HapList) then
             nHaps=0
@@ -471,9 +484,9 @@ CONTAINS
         integer :: i,j, NoGenosUnit, nIndvG
 
         inputParams => defaultInput
-#ifdef DEBUG
+! #ifdef DEBUG
         write(0,*) 'DEBUG: [ParseMaCHDataGenos] ...'
-#endif
+! #endif
 
         NoGenosUnit = 111
         open(unit=NoGenosUnit, file='Miscellaneous/NotGenotypedAnimals.txt', status="replace")
@@ -1685,7 +1698,7 @@ CONTAINS
         integer, intent(in) :: nGenotyped
 
         integer :: i,j, alleles, readObs, RefAll, AltAll
-        integer :: PosteriorUnit = 1234
+        integer :: PosteriorUnit = 1234, GenotypesUnit=4321
         double precision :: prior_11, prior_12, prior_22
         double precision :: posterior_11, posterior_12, posterior_22
         double precision :: r, frequency, summ
@@ -1729,6 +1742,10 @@ CONTAINS
                 posterior_22 = posterior_22 / summ
 
                 PosteriorsDosages(i,j) = posterior_12 + 2 * posterior_22
+
+                if (pedigree%pedigree(pedigree%genotypeMap(i))%originalID == '1091' .AND. j == 6) then
+                    write(*,'(a20,3f7.4)'), pedigree%pedigree(pedigree%genotypeMap(i))%originalID, posterior_11, posterior_12, posterior_22
+                endif
 
                 if (posterior_11 > 0.9999) then
                     GenosHmmMaCH(i,j) = 0
@@ -1779,11 +1796,14 @@ CONTAINS
         enddo
 
         ! Print out Genotype dosage probabilities based on reads
-        open(unit=PosteriorUnit, file='Results/GenotypePosteriorProbabilities.txt', status='unknown')
+        open(unit=PosteriorUnit, file='Debugging/GenotypePosteriorProbabilities.txt', status='unknown')
+        open(unit=GenotypesUnit, file='Debugging/GenotypeCalling.txt', status='unknown')
         do i=1, nGenotyped
             write(PosteriorUnit,'(a20,240000f7.4)') pedigree%pedigree(pedigree%genotypeMap(i))%originalID, PosteriorsDosages(i,:)
+            write(GenotypesUnit,'(a20,240000i2)') pedigree%pedigree(pedigree%genotypeMap(i))%originalID, GenosHmmMaCH(i,:)
         end do
         close(PosteriorUnit)
+        close(GenotypesUnit)
 
     end subroutine SetUpEquationsReads
 
