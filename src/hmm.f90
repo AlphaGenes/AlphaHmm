@@ -1747,10 +1747,10 @@ CONTAINS
                     write(*,'(a20,3f7.4)'), pedigree%pedigree(pedigree%genotypeMap(i))%originalID, posterior_11, posterior_12, posterior_22
                 endif
 
-                if (posterior_11 > 0.9999) then
+                if (posterior_11 > 0.99) then
                     GenosHmmMaCH(i,j) = 0
                     FullH(i,j,:) = 0
-                else if (posterior_12 > 0.9999) then
+                else if (posterior_12 > 0.99) then
                     GenosHmmMaCH(i,j) = 1
                     if (ran1(inputParams%seed)<0.5) then
                         FullH(i,j,1) = 0
@@ -1759,7 +1759,7 @@ CONTAINS
                         FullH(i,j,1) = 1
                         FullH(i,j,2) = 0
                     endif
-                else if (posterior_22 > 0.9999) then
+                else if (posterior_22 > 0.99) then
                     GenosHmmMaCH(i,j) = 2
                     FullH(i,j,:) = 1
                 else
