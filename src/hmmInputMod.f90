@@ -19,6 +19,7 @@
 !
 ! REVISION HISTORY:
 ! 2017.05.11  Rantolin - Initial Version
+! 2017.12.11  Rantolin - Add GetAlleleFrequenciesFromFile
 !
 !-----------------------------------------------------------------------------------------------------------------------
 
@@ -26,7 +27,7 @@ module HmmInputMod
     use iso_fortran_env
 
     private
-    public :: CountInData, ReadInData
+    public :: CountInData, ReadInData, GetAlleleFrequenciesFromFile
 
 contains
 
@@ -256,5 +257,76 @@ contains
 
     end subroutine ReadSeq
 
+    !###########################################################################
+    !---------------------------------------------------------------------------
+    ! DESCRIPTION:
+    !> @brief      Get allele frequencies from file
+    !
+    !> @details    This function reads allele frequencies from a file provided
+    !>             by the user and returns an array with the read frequencies
+    !
+    !> @author     Roberto Antolin, roberto.antolin@roslin.ed.ac.uk
+    !
+    !> @date       Dec 11, 2017
+    !---------------------------------------------------------------------------
+    function GetAlleleFrequenciesFromFile(FreqsUnit) result(frequency)
+        use AlphaHmmInMod
+        implicit none
+
+        ! Dummy Arguments
+        integer, intent(inout), optional :: FreqsUnit                   !< File Unit
+        double precision, allocatable, dimension(:) :: frequency        !< Frequencies
+
+        ! Local Variables
+        integer :: j, k, nFreqs
+        double precision :: dumF
+        logical :: opened, named
+        character(len=300) :: FreqsFile
+        type(AlphaHmmInput), pointer :: inputParams
+
+        inputParams => defaultInput
+
+        allocate(frequency(inputParams%nSnp))
+
+        inquire(unit=FreqsUnit, opened=opened, named=named, name=FreqsFile)
+
+        ! Check if file exits and is opened
+        if(.NOT. opened .AND. named) then
+            open(unit=FreqsUnit, file=trim(FreqsFile), status="old")
+        else if (.NOT. named) then
+            write(0, *) "ERROR: Something went wrong when trying to read the file of Allele Frequencies"
+            stop 9
+        end if
+
+        ! Get number of frequencies in the input file and handle errors
+        nFreqs = 0
+        do
+            read(FreqsUnit, *) dumF
+            nFreqs = nFreqs + 1
+            if (k /= 0) then
+                nFreqs = nFreqs - 1
+                exit
+            end if
+        end do
+
+        rewind(FreqsUnit)
+
+        if (nFreqs < inputParams%nSnp) then
+            write(0, *) "ERROR: Inconsistent number of allele frequencies. Less frequencies in file "
+            write(0, *) "       ", trim(FreqsFile), "than SNP provided. The program will now exit"
+            stop 9
+        else if (nFreqs > inputParams%nSnp) then
+            write(0, *) "WARNING: Inconsistent number of allele frequencies. More frequencies in file "
+            write(0, *) "         ", trim(FreqsFile), "than SNP provided. The haplotype template might be wrong!"
+        end if
+
+        ! Read frequencies from file
+        do j = 1, inputParams%nSnp
+            read(FreqsUnit, *, iostat=k) frequency(j)
+        end do
+
+        close(FreqsUnit)
+
+    end function GetalleleFrequenciesFromFile
 
 end module HmmInputMod

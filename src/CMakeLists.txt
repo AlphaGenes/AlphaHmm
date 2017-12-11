@@ -1,6 +1,7 @@
 SET(ALPHAHMM_src
 AlphaHmmInMod.f90
 hmm.f90
+hmmInputMod.f90
 hmmHaplotype.f90
 hmmHeader.f90
 hmmvariables.f90
