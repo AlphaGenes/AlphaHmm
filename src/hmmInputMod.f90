@@ -20,6 +20,8 @@
 ! REVISION HISTORY:
 ! 2017.05.11  Rantolin - Initial Version
 ! 2017.12.11  Rantolin - Add GetAlleleFrequenciesFromFile
+!                        Bugfix: missing module
+!                        Bugfix: Wrong variable for number of snps
 !
 !-----------------------------------------------------------------------------------------------------------------------
 
@@ -123,6 +125,7 @@ contains
     !---------------------------------------------------------------------------
     subroutine ReadInData(nGenotyped)
         use hmmPARAMETERS
+        use GlobalVariablesHmmMaCH
         use AlphaHmmInMod
         implicit none
 
@@ -140,7 +143,7 @@ contains
             !     call ReadPlink(inputParams%genotypeFileUnit)
             ! end if
         else
-            call pedigree%addSequenceFromFile(inputparams%GenotypeFile, inputParams%nsnpRaw)
+            call pedigree%addSequenceFromFile(inputparams%GenotypeFile, inputParams%nsnp)
         endif
 
         close(inputParams%genotypeFileUnit)
