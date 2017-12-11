@@ -1687,6 +1687,120 @@ CONTAINS
     !###########################################################################
     !---------------------------------------------------------------------------
     ! DESCRIPTION:
+    !> @brief      Get allele frequencies from file
+    !
+    !> @details    This function reads allele frequencies from a file provided
+    !>             by the user and returns an array with the read frequencies
+    !
+    !> @author     Roberto Antolin, roberto.antolin@roslin.ed.ac.uk
+    !
+    !> @date       Dec 11, 2017
+    !---------------------------------------------------------------------------
+    function GetAlleleFrequenciesFromFile(FreqsUnit) result(frequency)
+        use AlphaHmmInMod
+        implicit none
+
+        ! Dummy Arguments
+        integer, intent(inout), optional :: FreqsUnit                   !< File Unit
+        double precision, allocatable, dimension(:) :: frequency        !< Frequencies
+
+        ! Local Variables
+        integer :: j, k, nFreqs
+        double precision :: dumF
+        logical :: opened, named
+        character(len=300) :: FreqsFile
+        type(AlphaHmmInput), pointer :: inputParams
+
+        inputParams => defaultInput
+
+        allocate(frequency(inputParams%nSnp))
+
+        inquire(unit=FreqsUnit, opened=opened, named=named, name=FreqsFile)
+
+        ! Read frequencies from file
+        if(.NOT. opened .AND. named) then
+            open(unit=FreqsUnit, file=trim(FreqsFile), status="old")
+        else if (.NOT. named) then
+            write(0, *) "ERROR: Something went wrong when trying to read the file of Allele Frequencies"
+            stop 9
+        end if
+
+        ! Get number of frequencies in the input file and handle errors
+        nFreqs = 0
+        do
+            read(FreqsUnit, *) dumF
+            nFreqs = nFreqs + 1
+            if (k /= 0) then
+                nFreqs = nFreqs - 1
+                exit
+            end if
+        end do
+
+        rewind(FreqsUnit)
+
+        if (nFreqs < inputParams%nSnp) then
+            write(0, *) "ERROR: Inconsistent number of allele frequencies. Less frequencies in file "
+            write(0, *) "       ", trim(FreqsFile), "than SNP provided. The program will now exit"
+            stop 9
+        else if (nFreqs > inputParams%nSnp) then
+            write(0, *) "WARNING: Inconsistent number of allele frequencies. More frequencies in file "
+            write(0, *) "         ", trim(FreqsFile), "than SNP provided. The haplotype template might be wrong!"
+        end if
+
+        ! Read frequencies
+        do j = 1, inputParams%nSnp
+            read(FreqsUnit, *, iostat=k) frequency(j)
+        end do
+
+        close(FreqsUnit)
+
+    end function GetalleleFrequenciesFromFile
+
+    !###########################################################################
+    !---------------------------------------------------------------------------
+    ! DESCRIPTION:
+    !> @brief      Get allele frequencies from population
+    !
+    !> @details    This function calculates allele frequencies from the population
+    !>             and returns an array with the frequencies
+    !
+    !> @author     Roberto Antolin, roberto.antolin@roslin.ed.ac.uk
+    !
+    !> @date       Dec 11, 2017
+    !---------------------------------------------------------------------------
+    function GetAlleleFrequenciesFromPopulation() result(frequency)
+        use GlobalVariablesHmmMaCH
+        use AlphaHmmInMod
+        implicit none
+
+        ! Dummy Arguments
+        double precision, allocatable, dimension(:) :: frequency        !< Frequencies
+
+        ! Local Variables
+        integer :: i, j, readObs, alleles, refAll, altAll
+        type(AlphaHmmInput), pointer :: inputParams
+
+        inputParams => defaultInput
+
+        allocate(frequency(inputParams%nSnp))
+
+        ! Read frequencies from file
+        do j = 1, inputParams%nSnp
+            readObs = 0
+            alleles = 0
+            do i=1,pedigree%nGenotyped
+                refAll = pedigree%pedigree(pedigree%genotypeMap(i))%ReferAllele(j)
+                altAll = pedigree%pedigree(pedigree%genotypeMap(i))%AlterAllele(j)
+                readObs = readObs + refAll + altAll
+                alleles = alleles + altAll
+            enddo
+            frequency(j) =  dble(alleles) / dble(readObs)
+        end do
+    end function GetAlleleFrequenciesFromPopulation
+
+    !###########################################################################
+    !---------------------------------------------------------------------------
+    ! DESCRIPTION:
     !> @brief      Get allele frequencies
     !
     !> @details    This subroutine reads allele frequencies from a file provided
@@ -1706,44 +1820,16 @@ CONTAINS
         double precision, intent(out), allocatable, dimension(:) :: frequency   !< Frequencies
 
         ! Local Variables
-        integer :: i, j
-        integer :: readObs, alleles, refAll, altAll
-        logical :: opened, named
-        character(len=300) :: FreqsFile
         type(AlphaHmmInput), pointer :: inputParams
 
         inputParams => defaultInput
 
         allocate(frequency(inputParams%nSnp))
 
-        inquire(unit=FreqsUnit, opened=opened, named=named, name=FreqsFile)
-
         if (present(FreqsUnit)) then
-            ! Read frequencies from file
-            if(.NOT. opened .AND. named) then
-                open(unit=FreqsUnit, file=trim(FreqsFile), status="old")
-            else if (.NOT. named) then
-                write(0, *) "ERROR - Something went wrong when trying to read the file of Allele Frequencies"
-                stop 9
-            end if
-
-            do j = 1, inputParams%nSnp
-                read(FreqsUnit,*) frequency(j)
-            end do
-            close(FreqsUnit)
+            frequency = GetAlleleFrequenciesFromFile(FreqsUnit)
         else
-            ! Read frequencies from file
-            do j = 1, inputParams%nSnp
-                readObs = 0
-                alleles = 0
-                do i=1,pedigree%nGenotyped
-                    refAll = pedigree%pedigree(pedigree%genotypeMap(i))%ReferAllele(j)
-                    altAll = pedigree%pedigree(pedigree%genotypeMap(i))%AlterAllele(j)
-                    readObs = readObs + refAll + altAll
-                    alleles = alleles + altAll
-                enddo
-                frequency(j) =  dble(alleles) / dble(readObs)
-            end do
+            frequency = GetAlleleFrequenciesFromPopulation()
         end if
 
     end subroutine GetAlleleFrequencies
