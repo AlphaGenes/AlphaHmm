@@ -1685,10 +1685,18 @@ CONTAINS
     end subroutine SetUpEquationsGenotypesDiploid
 
     !######################################################################
+    !---------------------------------------------------------------------------
+    ! DESCRIPTION:
+    !> @brief      Initialize the variables and parameters of the HMM model
+    !
+    !> @details    Initialize the variables and parameters of the HMM model
+    !>             described in Li et al. 2010 (Appendix) for the NGS data
+    !
+    !> @author     Roberto Antolin, roberto.antolin@roslin.ed.ac.uk
+    !
+    !> @date       Dec 11, 2017
+    !---------------------------------------------------------------------------
     subroutine SetUpEquationsReads(nGenotyped)
-        ! Initialize the variables and parameters of the HMM model described in
-        ! Li et al. 2010, Appendix
-
         use GlobalVariablesHmmMaCH
 
         use random
