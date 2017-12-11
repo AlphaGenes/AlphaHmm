@@ -28,7 +28,7 @@ module AlphaHmmInMod
     type AlphaHmmInput
 
     ! character(len=300) :: PedigreeFile = "Pedigree.txt"     ! Pedigree File
-    character(len=300):: PedigreeFile = "Pedigree.txt",GenotypeFile="Genotypes.txt",TrueGenotypeFile="TrueGenotypes.txt",GenderFile="None",InbredAnimalsFile="None", HapListFile="None"
+    character(len=300):: PedigreeFile = "Pedigree.txt",GenotypeFile="Genotypes.txt",TrueGenotypeFile="TrueGenotypes.txt",GenderFile="None",InbredAnimalsFile="None", HapListFile="None", PriorAllFreqsFile="None"
 
     integer(kind=1) :: HMMOption                            ! Type of HMM imputation (Genotype vs Sequence)
 
@@ -40,9 +40,11 @@ module AlphaHmmInMod
     real(kind=real32) :: imputedThreshold                   !< threshold of imputed snps
     real(kind=real32) :: phasedThreshold                   !< threshold of phase information accept
 
-    integer :: AnimalFileUnit, prePhasedFileUnit, pedigreeFileUnit,genotypeFileUnit,GenderFileUnit,HapListUnit
+    integer :: AnimalFileUnit, prePhasedFileUnit, pedigreeFileUnit,genotypeFileUnit,GenderFileUnit,HapListUnit,PriorAllFreqsUnit
     integer(kind=int32) :: seed
     logical :: HapList=.FALSE.
+    logical :: PriorAllFreqs = .FALSE.
+
     contains
         procedure :: ReadInParameterFile
     end type AlphaHmmInput
@@ -134,6 +136,16 @@ contains
 
                 case("parallelprocessors")
                     read(second(1), *) this%useProcs
+
+                case("PriorAlleleFrequencies")
+                    if (.not. allocated(second)) then
+                        write(*, "(A)") "WARNING: No allele frequencies given"
+                    else
+                        if (trim(second(1)) /= "None") then
+                            this%PriorAllFreqs = .TRUE.
+                            this%PriorAllFreqsFile = trim(second(1))
+                        endif
+                    endif
 
                 end select
             end if

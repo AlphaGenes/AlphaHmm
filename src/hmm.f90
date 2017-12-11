@@ -1684,6 +1684,70 @@ CONTAINS
         enddo
     end subroutine SetUpEquationsGenotypesDiploid
 
+    !###########################################################################
+    !---------------------------------------------------------------------------
+    ! DESCRIPTION:
+    !> @brief      Get allele frequencies
+    !
+    !> @details    This subroutine reads allele frequencies from a file provided
+    !>             by the user or calculate them from the population otherwise
+    !
+    !> @author     Roberto Antolin, roberto.antolin@roslin.ed.ac.uk
+    !
+    !> @date       Dec 11, 2017
+    !---------------------------------------------------------------------------
+    subroutine GetAlleleFrequencies(FreqsUnit, frequency)
+        use GlobalVariablesHmmMaCH
+        use AlphaHmmInMod
+        implicit none
+
+        ! Dummy Arguments
+        integer, intent(inout), optional :: FreqsUnit                           !< File Unit
+        double precision, intent(out), allocatable, dimension(:) :: frequency   !< Frequencies
+
+        ! Local Variables
+        integer :: i, j
+        integer :: readObs, alleles, refAll, altAll
+        logical :: opened, named
+        character(len=300) :: FreqsFile
+        type(AlphaHmmInput), pointer :: inputParams
+
+        inputParams => defaultInput
+
+        allocate(frequency(inputParams%nSnp))
+
+        inquire(unit=FreqsUnit, opened=opened, named=named, name=FreqsFile)
+
+        if (present(FreqsUnit)) then
+            ! Read frequencies from file
+            if(.NOT. opened .AND. named) then
+                open(unit=FreqsUnit, file=trim(FreqsFile), status="old")
+            else if (.NOT. named) then
+                write(0, *) "ERROR - Something went wrong when trying to read the file of Allele Frequencies"
+                stop 9
+            end if
+
+            do j = 1, inputParams%nSnp
+                read(FreqsUnit,*) frequency(j)
+            end do
+            close(FreqsUnit)
+        else
+            ! Read frequencies from file
+            do j = 1, inputParams%nSnp
+                readObs = 0
+                alleles = 0
+                do i=1,pedigree%nGenotyped
+                    refAll = pedigree%pedigree(pedigree%genotypeMap(i))%ReferAllele(j)
+                    altAll = pedigree%pedigree(pedigree%genotypeMap(i))%AlterAllele(j)
+                    readObs = readObs + refAll + altAll
+                    alleles = alleles + altAll
+                enddo
+                frequency(j) =  dble(alleles) / dble(readObs)
+            end do
+        end if
+
+    end subroutine GetAlleleFrequencies
+
     !######################################################################
     !---------------------------------------------------------------------------
     ! DESCRIPTION:
@@ -1698,39 +1762,31 @@ CONTAINS
     !---------------------------------------------------------------------------
     subroutine SetUpEquationsReads(nGenotyped)
         use GlobalVariablesHmmMaCH
-
         use random
         use AlphaHmmInMod
         implicit none
 
         integer, intent(in) :: nGenotyped
 
-        integer :: i,j, alleles, readObs, RefAll, AltAll
-        integer :: PosteriorUnit = 1234, GenotypesUnit=4321
+        integer :: i, j, RefAll, AltAll
         double precision :: prior_11, prior_12, prior_22
         double precision :: posterior_11, posterior_12, posterior_22
-        double precision :: r, frequency, summ
-        double precision, allocatable, dimension(:,:) :: PosteriorsDosages
+        double precision :: r, summ
+        double precision, allocatable, dimension(:) :: frequency
         type(AlphaHmmInput), pointer :: inputParams
 
         inputParams => defaultInput
 
-        allocate(PosteriorsDosages(nGenotyped, inputParams%nsnp))
+        ! Get allele frequencies from file
+        call GetAlleleFrequencies(inputParams%PriorAllFreqsUnit, frequency)
 
         !Initialise FullH
         do j=1,inputParams%nsnp      ! For each SNP
-            readObs = 0
-            alleles = 0
 
-            do i=1,nGenotyped
-                readObs = readObs + pedigree%pedigree(pedigree%genotypeMap(i))%ReferAllele(j) + pedigree%pedigree(pedigree%genotypeMap(i))%AlterAllele(j)
-                alleles = alleles + pedigree%pedigree(pedigree%genotypeMap(i))%AlterAllele(j)
-            enddo
-            frequency =  dble(alleles) / dble(readObs)
-
-            prior_11 = (1.0 - frequency)**2
-            prior_12 = 2.0 * (1.0 - frequency) * frequency
-            prior_22 = frequency**2
+            ! Calculate prior probabitlities based on allele frequencies
+            prior_11 = (1.0 - frequency(j))**2
+            prior_12 = 2.0 * (1.0 - frequency(j)) * frequency(j)
+            prior_22 = frequency(j)**2
 
             do i=1,nGenotyped
                 RefAll = pedigree%pedigree(pedigree%genotypeMap(i))%ReferAllele(j)
@@ -1748,12 +1804,6 @@ CONTAINS
                 posterior_11 = posterior_11 / summ
                 posterior_12 = posterior_12 / summ
                 posterior_22 = posterior_22 / summ
-
-                PosteriorsDosages(i,j) = posterior_12 + 2 * posterior_22
-
-                if (pedigree%pedigree(pedigree%genotypeMap(i))%originalID == '1091' .AND. j == 6) then
-                    write(*,'(a20,3f7.4)'), pedigree%pedigree(pedigree%genotypeMap(i))%originalID, posterior_11, posterior_12, posterior_22
-                endif
 
                 if (posterior_11 > 0.99) then
                     GenosHmmMaCH(i,j) = 0
@@ -1802,16 +1852,6 @@ CONTAINS
                 end if
             enddo
         enddo
-
-        ! Print out Genotype dosage probabilities based on reads
-        open(unit=PosteriorUnit, file='Debugging/GenotypePosteriorProbabilities.txt', status='unknown')
-        open(unit=GenotypesUnit, file='Debugging/GenotypeCalling.txt', status='unknown')
-        do i=1, nGenotyped
-            write(PosteriorUnit,'(a20,240000f7.4)') pedigree%pedigree(pedigree%genotypeMap(i))%originalID, PosteriorsDosages(i,:)
-            write(GenotypesUnit,'(a20,240000i2)') pedigree%pedigree(pedigree%genotypeMap(i))%originalID, GenosHmmMaCH(i,:)
-        end do
-        close(PosteriorUnit)
-        close(GenotypesUnit)
 
     end subroutine SetUpEquationsReads
 
