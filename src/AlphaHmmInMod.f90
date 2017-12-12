@@ -28,7 +28,13 @@ module AlphaHmmInMod
     type AlphaHmmInput
 
     ! character(len=300) :: PedigreeFile = "Pedigree.txt"     ! Pedigree File
-    character(len=300):: PedigreeFile = "Pedigree.txt",GenotypeFile="Genotypes.txt",TrueGenotypeFile="TrueGenotypes.txt",GenderFile="None",InbredAnimalsFile="None", HapListFile="None", PriorAllFreqsFile="None"
+    character(len=300) :: PedigreeFile = "Pedigree.txt"
+    character(len=300) :: GenotypeFile="Genotypes.txt"
+    character(len=300) :: TrueGenotypeFile="TrueGenotypes.txt"
+    character(len=300) :: GenderFile="None"
+    character(len=300) :: InbredAnimalsFile="None"
+    character(len=300) :: HapListFile="None"
+    character(len=300) :: PriorAllFreqsFile="None"
 
     integer(kind=1) :: HMMOption                            ! Type of HMM imputation (Genotype vs Sequence)
 

@@ -444,16 +444,12 @@ CONTAINS
         do i=1,nGenotyped
             ! Add animal's diploid to the Diploids Library
             ! Find individuals sequenced with high coverage
-            ! TODO: Refactor this to make it more readable
+            if ( float( count(pedigree%pedigree(pedigree%genotypeMap(i))%ReferAllele(:) + &
+                               pedigree%pedigree(pedigree%genotypeMap(i))%AlterAllele(:) /= READ_MISSING) ) / inputParams%nSnp > 0.90 ) then
 
-            if ((float(count(pedigree%pedigree(pedigree%genotypeMap(i))%ReferAllele(:) + pedigree%pedigree(pedigree%genotypeMap(i))%AlterAllele(:)/=READ_MISSING))/inputParams%nSnp)>0.90) then
-                ! WARNING: If this variable only stores 1 and 0, then its
-                !          type should logical: GlobalHmmHDInd=.true.
                 GlobalHmmHDInd(i)=1
             endif
             if (inputParams%HapList) then
-                ! do j=1,HapsLeft
-                ! TODO: CHANGE THIS TO A WHILE LOOP
                 do j=1,nHaps
                     if (pedigree%pedigree(pedigree%genotypeMap(i))%originalID == HapList(j)) then
                         GlobalInbredInd(i) = .TRUE.
@@ -465,7 +461,6 @@ CONTAINS
 
         ! AlphaImpute does not phase sequence data, thus no individual has been phased.
         nGametesPhased = 0
-
     end subroutine ParseMaCHDataNGS
 
     !######################################################################
