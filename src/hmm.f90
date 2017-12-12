@@ -378,29 +378,36 @@ CONTAINS
     end subroutine ReadInbred
 
     !######################################################################
-    subroutine getHapList(HapListUnit, ListIds, nHaps)
+    subroutine getHapList(ListIds, nHaps)
+        use GlobalVariablesHmmMaCH
+        use AlphaHmmInMod
         implicit none
 
-        integer, intent(inout) :: HapListUnit
+        ! Dummy Arguments
         character(len=20), allocatable, intent(inout) :: ListIds(:)
         integer, intent(out) :: nHaps
 
+        ! Local Variables
         integer :: i, k
-        logical :: opened, named
-        character(len=300) :: HapListFile
+        logical :: opened, exists
         character(len=20) :: dumC
+        type(AlphaHmmInput), pointer :: inputParams
 
-        inquire(unit=HapListUnit, opened=opened, named=named, name=HapListFile)
+        inputParams => defaultInput
 
-        if (.NOT. opened .and. named) then
-            open(unit=HapListUnit, file=HapListFile, status='unknown')
-        else if (.NOT. named) then
-            write(0, *) "ERROR - Something went wrong when trying to read the file of the list of haplotypes"
+        inquire(file=trim(inputParams%HapListFile), exist = exists, number=inputParams%HapListUnit)
+        if (exists) then
+            if (.not. opened) then
+                open(newunit=inputParams%HapListUnit, file=trim(inputParams%HapListFile), status="old")
+            end if
+        else
+            write(0,*) "ERROR: File <", trim(inputParams%HapListFile), "> does not exist"
+            stop
         end if
 
         nHaps = 0
         do
-            read(HapListUnit, *, iostat=k) dumC
+            read(inputParams%HapListUnit, *, iostat=k) dumC
             nHaps=nHaps+1
             if(k/=0) then
                 nHaps=nHaps-1
@@ -408,13 +415,13 @@ CONTAINS
             endif
         enddo
 
-        rewind(HapListUnit)
+        rewind(inputParams%HapListUnit)
 
         allocate(ListIds(nHaps))
         do i=1,nHaps
-            read(HapListUnit, *) ListIds(i)
+            read(inputParams%HapListUnit, *) ListIds(i)
         enddo
-        close(HapListUnit)
+        close(inputParams%HapListUnit)
 
     end subroutine getHapList
 
@@ -425,20 +432,19 @@ CONTAINS
 
         implicit none
         integer, intent(in) :: nGenotyped
-        integer :: i, j, nHaps, HapsLeft
+        integer :: i, j, nHaps
         type(AlphaHmmInput), pointer :: inputParams
         character(len=20), allocatable :: HapList(:)
 
-
-        inputParams => defaultInput
 #ifdef DEBUG
         write(0,*) 'DEBUG: [ParseMaCHDataNGS]'
 #endif
 
+        inputParams => defaultInput
+
         if (inputParams%HapList) then
             nHaps=0
-            call getHapList(inputParams%HapListUnit,HapList,nHaps)
-            HapsLeft=nHaps
+            call getHapList(HapList, nHaps)
         end if
 
         do i=1,nGenotyped

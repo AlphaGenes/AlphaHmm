@@ -81,6 +81,8 @@ contains
         character(len=300) :: first, line
         character(len=:), allocatable::tag
         character(len=300),dimension(:),allocatable :: second
+        logical :: exists
+
 
         open(newunit=unit, file=SpecFile, action="read", status="old")
         IOStatus = 0
@@ -152,6 +154,24 @@ contains
                             this%PriorAllFreqsFile = trim(second(1))
                         endif
                     endif
+
+                case("haplotypeslist")
+                    if (.not. allocated(second)) then
+                        write(*, "(A,A)") "WARNING: No list of haploytpes specified"
+                    else
+                        if (trim(second(1)) /= "None") then
+                            inquire(file=trim(second(1)), exist=exists)
+                            if (exists) then
+                                this%HapList = .TRUE.
+                                this%HapListFile = trim(second(1))
+                                open(newunit=this%HapListUnit, file=trim(this%HapListFile), status="old")
+                            else
+                                write(0,*) "ERROR: File ", trim(second(1)), " does not exist"
+                                stop 9
+                            end if
+                        endif
+                    endif
+
 
                 end select
             end if
