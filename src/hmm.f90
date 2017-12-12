@@ -431,9 +431,9 @@ CONTAINS
 
 
         inputParams => defaultInput
-! #ifdef DEBUG
+#ifdef DEBUG
         write(0,*) 'DEBUG: [ParseMaCHDataNGS]'
-! #endif
+#endif
 
         if (inputParams%HapList) then
             nHaps=0
