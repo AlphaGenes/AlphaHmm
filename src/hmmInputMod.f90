@@ -272,39 +272,34 @@ contains
     !
     !> @date       Dec 11, 2017
     !---------------------------------------------------------------------------
-    function GetAlleleFrequenciesFromFile(FreqsUnit) result(frequency)
+    function ReadAlleleFrequenciesFromFile() result(frequency)
         use AlphaHmmInMod
         implicit none
 
         ! Dummy Arguments
-        integer, intent(inout), optional :: FreqsUnit                   !< File Unit
         double precision, allocatable, dimension(:) :: frequency        !< Frequencies
 
         ! Local Variables
         integer :: j, k, nFreqs
         double precision :: dumF
-        logical :: opened, named
-        character(len=300) :: FreqsFile
+        logical :: opened, exists
         type(AlphaHmmInput), pointer :: inputParams
 
         inputParams => defaultInput
 
         allocate(frequency(inputParams%nSnp))
 
-        inquire(unit=FreqsUnit, opened=opened, named=named, name=FreqsFile)
+        inquire(file=trim(inputParams%PriorAllFreqsFile), opened=opened, exist=exists, number=inputParams%PriorAllFreqsUnit)
 
-        ! Check if file exits and is opened
-        if(.NOT. opened .AND. named) then
-            open(unit=FreqsUnit, file=trim(FreqsFile), status="old")
-        else if (.NOT. named) then
-            write(0, *) "ERROR: Something went wrong when trying to read the file of Allele Frequencies"
-            stop 9
+        ! Check if file is opened
+        if(.NOT. opened) then
+            open(newunit=inputParams%PriorAllFreqsUnit, file=trim(inputParams%PriorAllFreqsFile), status="old")
         end if
 
         ! Get number of frequencies in the input file and handle errors
         nFreqs = 0
         do
-            read(FreqsUnit, *) dumF
+            read(inputParams%PriorAllFreqsUnit, *) dumF
             nFreqs = nFreqs + 1
             if (k /= 0) then
                 nFreqs = nFreqs - 1
@@ -312,24 +307,27 @@ contains
             end if
         end do
 
-        rewind(FreqsUnit)
+        rewind(inputParams%PriorAllFreqsUnit)
 
+        ! Check if number of markers read is correct
         if (nFreqs < inputParams%nSnp) then
             write(0, *) "ERROR: Inconsistent number of allele frequencies. Less frequencies in file "
-            write(0, *) "       ", trim(FreqsFile), "than SNP provided. The program will now exit"
+            write(0, *) "       ", trim(inputParams%PriorAllFreqsFile), "than SNP provided."
+            write(0, *) "       The program will now exit"
             stop 9
         else if (nFreqs > inputParams%nSnp) then
             write(0, *) "WARNING: Inconsistent number of allele frequencies. More frequencies in file "
-            write(0, *) "         ", trim(FreqsFile), "than SNP provided. The haplotype template might be wrong!"
+            write(0, *) "         ", trim(inputParams%PriorAllFreqsFile), "than SNP provided."
+            write(0, *) "         The reference haplotypes might be wrong!"
         end if
 
         ! Read frequencies from file
         do j = 1, inputParams%nSnp
-            read(FreqsUnit, *, iostat=k) frequency(j)
+            read(inputParams%PriorAllFreqsUnit, *, iostat=k) frequency(j)
         end do
 
-        close(FreqsUnit)
+        close(inputParams%PriorAllFreqsUnit)
 
-    end function GetalleleFrequenciesFromFile
+    end function ReadAlleleFrequenciesFromFile
 
 end module HmmInputMod
