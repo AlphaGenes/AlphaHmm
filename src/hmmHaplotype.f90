@@ -112,8 +112,8 @@ MODULE hmmHaplotyper
 
         call GetErrorRatebyMarker(Marker, ErrorRate)
 
-        RefAll = pedigree%pedigree(currentInd)%ReferAllele(marker)
-        AltAll = pedigree%pedigree(currentInd)%AlterAllele(marker)
+        RefAll = pedigree%pedigree(pedigree%genotypeMap(currentInd))%ReferAllele(marker)
+        AltAll = pedigree%pedigree(pedigree%genotypeMap(currentInd))%AlterAllele(marker)
 
         prior_11 = shotgunErrorMatrix(0,RefAll,AltAll)
         prior_12 = shotgunErrorMatrix(1,RefAll,AltAll)
@@ -560,8 +560,8 @@ MODULE hmmHaplotyper
         call GetErrorRatebyMarker(Marker, ErrorRate)
         ! if (defaultInput%HMMOption==RUN_HMM_NGS .AND. GlobalInbredInd(CurrentInd)==.FALSE.) then
         if (defaultInput%HMMOption==RUN_HMM_NGS) then
-            RefAll = pedigree%pedigree(currentInd)%ReferAllele(marker)
-            AltAll = pedigree%pedigree(currentInd)%AlterAllele(marker)
+            RefAll = pedigree%pedigree(pedigree%genotypeMap(currentInd))%ReferAllele(marker)
+            AltAll = pedigree%pedigree(pedigree%genotypeMap(currentInd))%AlterAllele(marker)
 
             if (RefAll+AltAll == 0) then
                 return
