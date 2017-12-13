@@ -1750,6 +1750,7 @@ CONTAINS
         double precision, allocatable, dimension(:) :: frequency   !< Frequencies
 
         ! Local Variables
+        logical :: exists
         type(AlphaHmmInput), pointer :: inputParams
 
         inputParams => defaultInput
