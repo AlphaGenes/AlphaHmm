@@ -145,13 +145,20 @@ contains
                 case("parallelprocessors")
                     read(second(1), *) this%useProcs
 
-                case("PriorAlleleFrequencies")
+                case("priorallelefrequencies")
                     if (.not. allocated(second)) then
-                        write(*, "(A)") "WARNING: No allele frequencies given"
+                        write(*, "(A,A)") "WARNING: No prior allele frequencies file specified"
                     else
                         if (trim(second(1)) /= "None") then
-                            this%PriorAllFreqs = .TRUE.
-                            this%PriorAllFreqsFile = trim(second(1))
+                            inquire(file=trim(second(1)), exist=exists)
+                            if (exists) then
+                                this%PriorAllFreqs = .TRUE.
+                                this%PriorAllFreqsFile = trim(second(1))
+                                open(newunit=this%PriorAllFreqsUnit, file=trim(this%PriorAllFreqsFile), status="old")
+                            else
+                                write(0,*) "ERROR: File ", trim(second(1)), " does not exist"
+                                stop 9
+                            end if
                         endif
                     endif
 
