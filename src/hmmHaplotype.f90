@@ -140,8 +140,8 @@ MODULE hmmHaplotyper
         posterior_11 = posterior_11 / summ
         posterior_22 = posterior_22 / summ
 
+        ! Sample gamete for imputation
         random = par_uni(Thread)
-
         if (random < posterior_11) then
             imputed = 0
         else
