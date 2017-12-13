@@ -120,9 +120,9 @@ MODULE hmmHaplotyper
         prior_22 = shotgunErrorMatrix(2,RefAll,AltAll)
 
         posterior_11 = ErrorRate * (prior_11 + prior_12 / 2.0)  &
-        + (1.0 - ErrorRate) * (prior_22 + prior_12 / 2.0)
+                     + (1.0 - ErrorRate) * (prior_22 + prior_12 / 2.0)
         posterior_22 = (1.0 - ErrorRate) * (prior_11 + prior_12 / 2.0) &
-        + ErrorRate * (prior_22 + prior_12 / 2.0)
+                     + ErrorRate * (prior_22 + prior_12 / 2.0)
 
         summ = posterior_11 + posterior_22
         posterior_11 = posterior_11 / summ
