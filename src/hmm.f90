@@ -386,7 +386,7 @@ CONTAINS
 
         inputParams => defaultInput
 
-        inquire(file=trim(inputParams%HapListFile), exist = exists, number=inputParams%HapListUnit)
+        inquire(file=trim(inputParams%HapListFile), opened=opened, exist=exists, number=inputParams%HapListUnit)
         if (exists) then
             if (.not. opened) then
                 open(newunit=inputParams%HapListUnit, file=trim(inputParams%HapListFile), status="old")
