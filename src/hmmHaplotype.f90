@@ -102,7 +102,7 @@ MODULE hmmHaplotyper
         integer, intent(in) :: CurrentInd, Marker, gamete, Hap
 
         integer :: copied, imputed, RefAll, AltAll, Thread
-        double precision :: prior_11, prior_12, prior_22
+        double precision :: prior_11, prior_12, prior_22, p
         double precision :: posterior_11, posterior_22
         double precision :: random, summ, ErrorRate
 
@@ -123,6 +123,18 @@ MODULE hmmHaplotyper
                      + (1.0 - ErrorRate) * (prior_22 + prior_12 / 2.0)
         posterior_22 = (1.0 - ErrorRate) * (prior_11 + prior_12 / 2.0) &
                      + ErrorRate * (prior_22 + prior_12 / 2.0)
+
+        ! if (prior_11 > prior_22) then
+        !     imputed = 0
+        ! elseif (prior_11 < prior_22) then
+        !     imputed = 1
+        ! else
+        !     if (par_uni(Thread) < p) then
+        !         imputed = 0
+        !     else
+        !         imputed = 1
+        !     endif
+        ! endif
 
         summ = posterior_11 + posterior_22
         posterior_11 = posterior_11 / summ
