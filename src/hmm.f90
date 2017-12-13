@@ -1842,6 +1842,7 @@ CONTAINS
                     if ((RefAll + AltAll)  == 0) then
                         GenosHmmMaCH(i,j) = MISSING
                     end if
+                    r = ran1(inputParams%seed)
                     if (r < posterior_11) then
                         FullH(i,j,:) = 0
                     else if (r < posterior_11 + posterior_12) then
