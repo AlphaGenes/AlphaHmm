@@ -1859,16 +1859,35 @@ CONTAINS
                 end if
 
                 if (GlobalInbredInd(i) == .TRUE.) then
-                    if (GenosHmmMaCH(i,j) == 0) then
-                        PhaseHmmMaCH(i,j,:) = 0
-                    end if
-                    if (GenosHmmMaCH(i,j) == 2) then
-                        PhaseHmmMaCH(i,j,:) = 1
-                    end if
-                    if (GenosHmmMaCH(i,j) == MISSING) then
+                    if (RefAll + AltAll == 0) then
+                        GenosHmmMaCH(i,j) = MISSING
                         PhaseHmmMaCH(i,j,:) = ALLELE_MISSING
                     end if
+
+                    if (posterior_11 > posterior_22) then
+                        GenosHmmMaCH(i,j) = 0
+                        FullH(i,j,:) = 0
+                        PhaseHmmMaCH(i,j,:) = 0
+                    elseif (posterior_11 < posterior_22) then
+                        GenosHmmMaCH(i,j) = 2
+                        FullH(i,j,:) = 1
+                        PhaseHmmMaCH(i,j,:) = 1
+                    else
+                        GenosHmmMaCH(i,j) = 1
+                        if (ran1(inputParams%seed)<0.5) then
+                            PhaseHmmMaCH(i,j,1) = 0
+                            PhaseHmmMaCH(i,j,2) = 1
+                            FullH(i,j,:) = 0
+                            FullH(i,j,:) = 1
+                        else
+                            PhaseHmmMaCH(i,j,1) = 1
+                            PhaseHmmMaCH(i,j,2) = 0
+                            FullH(i,j,:) = 1
+                            FullH(i,j,:) = 0
+                        endif
+                    endif
                 end if
+
             enddo
         enddo
 
