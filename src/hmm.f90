@@ -245,16 +245,6 @@ CONTAINS
 #ifdef DEBUG
         write(0,*) 'DEBUG: End paralellisation'
 #endif
-        BLOCK
-            integer :: hmmID
-
-            open (unit=1234,file="." // "/" // trim("Debugging") // "/"  // "Probabilities.txt",status="unknown")
-            do hmmID = 1, pedigree%nGenotyped
-                ! hmmID = ped%genotypeMap(i)
-                write (1234,'(a20,20000f5.2,20000f5.2,20000f5.2,20000f5.2,20000f5.2,20000f5.2,20000f5.2,20000f5.2,20000f5.2,20000f5.2,20000f5.2,20000f5.2)') pedigree%pedigree(hmmID)%originalID,ProbImputeGenosHmm(hmmID,:)
-            enddo
-            close(1234)
-        END BLOCK
 
         ! Average genotype probability of the different hmm processes
         ProbImputeGenosHmm=ProbImputeGenosHmm/(inputParams%nroundshmm-inputParams%hmmburninround)
