@@ -1356,7 +1356,6 @@ CONTAINS
         ! that may no longer be true.
         ! NOTE: gentoype can be refer either to genotypes or reads if working with sequence data (NGS)
         ! GlobalInbredInd(CurrentInd)==.TRUE.
-        ! if (defaultInput%HMMOption==RUN_HMM_NGS .AND. GlobalInbredInd(CurrentInd)==.FALSE.) then
         if (defaultInput%HMMOption==RUN_HMM_NGS) then
             RefAll = pedigree%pedigree(pedigree%genotypeMap(currentInd))%ReferAllele(Marker)
             AltAll = pedigree%pedigree(pedigree%genotypeMap(currentInd))%AlterAllele(Marker)
@@ -1374,7 +1373,6 @@ CONTAINS
         ! Index keeps track of the states already visited. The total number
         ! of states in this chunk of code is (inputParams%nhapinsubh x (inputParams%nhapinsubh-1)/2)
         Index=0
-        ! if (inputParams%HMMOption==RUN_HMM_NGS .AND. GlobalInbredInd(CurrentInd)==.FALSE.) then
         if (inputParams%HMMOption==RUN_HMM_NGS) then
             do i=0,2
                 cond_probs(i)=Penetrance(Marker,i,0)*shotgunErrorMatrix(0,RefAll,AltAll)&
@@ -1384,7 +1382,6 @@ CONTAINS
         endif
 
         do i=1, inputParams%nhapinsubh
-            ! if (inputParams%HMMOption /= RUN_HMM_NGS .OR. GlobalInbredInd(CurrentInd)==.TRUE.) then
             if (inputParams%HMMOption /= RUN_HMM_NGS) then
                 ! Probability to observe genotype SubH(i) being the true genotype GenosHmmMaCH in locus Marker
                 Factors(0) = Penetrance(Marker,SubH(i,Marker),genotypeInt)
