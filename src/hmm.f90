@@ -190,6 +190,7 @@ CONTAINS
 #endif
 
         ! Set up Reference haplotypes and HMM parameters
+        ! TODO: DEBUG THIS CODE
         call SetUpEquations(HMM, pedigree%nGenotyped, nAnisInbred)
 
         open (unit=6,form='formatted')
@@ -1739,15 +1740,14 @@ CONTAINS
     !
     !> @date       Dec 11, 2017
     !---------------------------------------------------------------------------
-    subroutine GetAlleleFrequencies(FreqsUnit, frequency)
+    function GetAlleleFrequencies() result(frequency)
         use GlobalVariablesHmmMaCH
         use AlphaHmmInMod
         use HmmInputMod
         implicit none
 
         ! Dummy Arguments
-        integer, intent(inout), optional :: FreqsUnit                           !< File Unit
-        double precision, intent(out), allocatable, dimension(:) :: frequency   !< Frequencies
+        double precision, allocatable, dimension(:) :: frequency   !< Frequencies
 
         ! Local Variables
         type(AlphaHmmInput), pointer :: inputParams
@@ -1756,13 +1756,14 @@ CONTAINS
 
         allocate(frequency(inputParams%nSnp))
 
-        if (present(FreqsUnit)) then
-            frequency = GetAlleleFrequenciesFromFile(FreqsUnit)
+        inquire(file=trim(inputParams%PriorAllFreqsFile), exist=exists)
+        if (exists) then
+            frequency = ReadAlleleFrequenciesFromFile()
         else
             frequency = GetAlleleFrequenciesFromPopulation()
         end if
 
-    end subroutine GetAlleleFrequencies
+    end function GetAlleleFrequencies
 
     !######################################################################
     !---------------------------------------------------------------------------
@@ -1794,7 +1795,7 @@ CONTAINS
         inputParams => defaultInput
 
         ! Get allele frequencies from file
-        call GetAlleleFrequencies(inputParams%PriorAllFreqsUnit, frequency)
+        frequency = GetAlleleFrequencies()
 
         !Initialise FullH
         do j=1,inputParams%nsnp      ! For each SNP
