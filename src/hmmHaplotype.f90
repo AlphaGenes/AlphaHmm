@@ -102,7 +102,7 @@ MODULE hmmHaplotyper
         integer, intent(in) :: CurrentInd, Marker, gamete, Hap
 
         integer :: copied, imputed, RefAll, AltAll, Thread
-        double precision :: prior_11, prior_12, prior_22
+        double precision :: prior_11, prior_12, prior_22, p
         double precision :: posterior_11, posterior_22
         double precision :: random, summ, ErrorRate
 
@@ -112,24 +112,36 @@ MODULE hmmHaplotyper
 
         call GetErrorRatebyMarker(Marker, ErrorRate)
 
-        RefAll = pedigree%pedigree(currentInd)%ReferAllele(marker)
-        AltAll = pedigree%pedigree(currentInd)%AlterAllele(marker)
+        RefAll = pedigree%pedigree(pedigree%genotypeMap(currentInd))%ReferAllele(marker)
+        AltAll = pedigree%pedigree(pedigree%genotypeMap(currentInd))%AlterAllele(marker)
 
         prior_11 = shotgunErrorMatrix(0,RefAll,AltAll)
         prior_12 = shotgunErrorMatrix(1,RefAll,AltAll)
         prior_22 = shotgunErrorMatrix(2,RefAll,AltAll)
 
         posterior_11 = ErrorRate * (prior_11 + prior_12 / 2.0)  &
-        + (1.0 - ErrorRate) * (prior_22 + prior_12 / 2.0)
+                     + (1.0 - ErrorRate) * (prior_22 + prior_12 / 2.0)
         posterior_22 = (1.0 - ErrorRate) * (prior_11 + prior_12 / 2.0) &
-        + ErrorRate * (prior_22 + prior_12 / 2.0)
+                     + ErrorRate * (prior_22 + prior_12 / 2.0)
+
+        ! if (prior_11 > prior_22) then
+        !     imputed = 0
+        ! elseif (prior_11 < prior_22) then
+        !     imputed = 1
+        ! else
+        !     if (par_uni(Thread) < p) then
+        !         imputed = 0
+        !     else
+        !         imputed = 1
+        !     endif
+        ! endif
 
         summ = posterior_11 + posterior_22
         posterior_11 = posterior_11 / summ
         posterior_22 = posterior_22 / summ
 
+        ! Sample gamete for imputation
         random = par_uni(Thread)
-
         if (random < posterior_11) then
             imputed = 0
         else
@@ -548,8 +560,8 @@ MODULE hmmHaplotyper
         call GetErrorRatebyMarker(Marker, ErrorRate)
         ! if (defaultInput%HMMOption==RUN_HMM_NGS .AND. GlobalInbredInd(CurrentInd)==.FALSE.) then
         if (defaultInput%HMMOption==RUN_HMM_NGS) then
-            RefAll = pedigree%pedigree(currentInd)%ReferAllele(marker)
-            AltAll = pedigree%pedigree(currentInd)%AlterAllele(marker)
+            RefAll = pedigree%pedigree(pedigree%genotypeMap(currentInd))%ReferAllele(marker)
+            AltAll = pedigree%pedigree(pedigree%genotypeMap(currentInd))%AlterAllele(marker)
 
             if (RefAll+AltAll == 0) then
                 return

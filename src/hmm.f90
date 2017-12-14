@@ -245,16 +245,6 @@ CONTAINS
 #ifdef DEBUG
         write(0,*) 'DEBUG: End paralellisation'
 #endif
-        BLOCK
-            integer :: hmmID
-
-            open (unit=1234,file="." // "/" // trim("Debugging") // "/"  // "Probabilities.txt",status="unknown")
-            do hmmID = 1, pedigree%nGenotyped
-                ! hmmID = ped%genotypeMap(i)
-                write (1234,'(a20,20000f5.2,20000f5.2,20000f5.2,20000f5.2,20000f5.2,20000f5.2,20000f5.2,20000f5.2,20000f5.2,20000f5.2,20000f5.2,20000f5.2)') pedigree%pedigree(hmmID)%originalID,ProbImputeGenosHmm(hmmID,:)
-            enddo
-            close(1234)
-        END BLOCK
 
         ! Average genotype probability of the different hmm processes
         ProbImputeGenosHmm=ProbImputeGenosHmm/(inputParams%nroundshmm-inputParams%hmmburninround)
@@ -396,7 +386,7 @@ CONTAINS
 
         inputParams => defaultInput
 
-        inquire(file=trim(inputParams%HapListFile), exist = exists, number=inputParams%HapListUnit)
+        inquire(file=trim(inputParams%HapListFile), opened=opened, exist=exists, number=inputParams%HapListUnit)
         if (exists) then
             if (.not. opened) then
                 open(newunit=inputParams%HapListUnit, file=trim(inputParams%HapListFile), status="old")
@@ -1366,7 +1356,6 @@ CONTAINS
         ! that may no longer be true.
         ! NOTE: gentoype can be refer either to genotypes or reads if working with sequence data (NGS)
         ! GlobalInbredInd(CurrentInd)==.TRUE.
-        ! if (defaultInput%HMMOption==RUN_HMM_NGS .AND. GlobalInbredInd(CurrentInd)==.FALSE.) then
         if (defaultInput%HMMOption==RUN_HMM_NGS) then
             RefAll = pedigree%pedigree(pedigree%genotypeMap(currentInd))%ReferAllele(Marker)
             AltAll = pedigree%pedigree(pedigree%genotypeMap(currentInd))%AlterAllele(Marker)
@@ -1384,7 +1373,6 @@ CONTAINS
         ! Index keeps track of the states already visited. The total number
         ! of states in this chunk of code is (inputParams%nhapinsubh x (inputParams%nhapinsubh-1)/2)
         Index=0
-        ! if (inputParams%HMMOption==RUN_HMM_NGS .AND. GlobalInbredInd(CurrentInd)==.FALSE.) then
         if (inputParams%HMMOption==RUN_HMM_NGS) then
             do i=0,2
                 cond_probs(i)=Penetrance(Marker,i,0)*shotgunErrorMatrix(0,RefAll,AltAll)&
@@ -1394,7 +1382,6 @@ CONTAINS
         endif
 
         do i=1, inputParams%nhapinsubh
-            ! if (inputParams%HMMOption /= RUN_HMM_NGS .OR. GlobalInbredInd(CurrentInd)==.TRUE.) then
             if (inputParams%HMMOption /= RUN_HMM_NGS) then
                 ! Probability to observe genotype SubH(i) being the true genotype GenosHmmMaCH in locus Marker
                 Factors(0) = Penetrance(Marker,SubH(i,Marker),genotypeInt)
@@ -1750,6 +1737,7 @@ CONTAINS
         double precision, allocatable, dimension(:) :: frequency   !< Frequencies
 
         ! Local Variables
+        logical :: exists
         type(AlphaHmmInput), pointer :: inputParams
 
         inputParams => defaultInput
@@ -1841,6 +1829,7 @@ CONTAINS
                     if ((RefAll + AltAll)  == 0) then
                         GenosHmmMaCH(i,j) = MISSING
                     end if
+                    r = ran1(inputParams%seed)
                     if (r < posterior_11) then
                         FullH(i,j,:) = 0
                     else if (r < posterior_11 + posterior_12) then
@@ -1857,16 +1846,35 @@ CONTAINS
                 end if
 
                 if (GlobalInbredInd(i) == .TRUE.) then
-                    if (GenosHmmMaCH(i,j) == 0) then
-                        PhaseHmmMaCH(i,j,:) = 0
-                    end if
-                    if (GenosHmmMaCH(i,j) == 2) then
-                        PhaseHmmMaCH(i,j,:) = 1
-                    end if
-                    if (GenosHmmMaCH(i,j) == MISSING) then
+                    if (RefAll + AltAll == 0) then
+                        GenosHmmMaCH(i,j) = MISSING
                         PhaseHmmMaCH(i,j,:) = ALLELE_MISSING
                     end if
+
+                    if (posterior_11 > posterior_22) then
+                        GenosHmmMaCH(i,j) = 0
+                        FullH(i,j,:) = 0
+                        PhaseHmmMaCH(i,j,:) = 0
+                    elseif (posterior_11 < posterior_22) then
+                        GenosHmmMaCH(i,j) = 2
+                        FullH(i,j,:) = 1
+                        PhaseHmmMaCH(i,j,:) = 1
+                    else
+                        GenosHmmMaCH(i,j) = 1
+                        if (ran1(inputParams%seed)<0.5) then
+                            PhaseHmmMaCH(i,j,1) = 0
+                            PhaseHmmMaCH(i,j,2) = 1
+                            FullH(i,j,:) = 0
+                            FullH(i,j,:) = 1
+                        else
+                            PhaseHmmMaCH(i,j,1) = 1
+                            PhaseHmmMaCH(i,j,2) = 0
+                            FullH(i,j,:) = 1
+                            FullH(i,j,:) = 0
+                        endif
+                    endif
                 end if
+
             enddo
         enddo
 

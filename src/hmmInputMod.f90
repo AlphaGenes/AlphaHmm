@@ -29,7 +29,7 @@ module HmmInputMod
     use iso_fortran_env
 
     private
-    public :: CountInData, ReadInData, GetAlleleFrequenciesFromFile
+    public :: CountInData, ReadInData, ReadAlleleFrequenciesFromFile
 
 contains
 
