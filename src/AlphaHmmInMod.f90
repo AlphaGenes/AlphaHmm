@@ -182,6 +182,7 @@ contains
 
                 end select
             end if
+            call OMP_set_num_threads(this%useProcs)
         end do READFILE
 
     end subroutine ReadInParameterFile

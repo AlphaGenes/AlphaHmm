@@ -197,7 +197,7 @@ CONTAINS
 
         print*, ""
         print*, " Impute genotypes by HMM"
-        print*, "    Using", inputParams%useprocs, "processors of", nprocs
+        print*, "    Using", nthreads, "processors of", nprocs
 
         ! Allocate and set up variables storing allele frequencies
         allocate(GenosCounts(nIndHmmMaCH,inputParams%nsnp,2))
